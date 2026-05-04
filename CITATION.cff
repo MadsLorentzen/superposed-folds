@@ -1,0 +1,39 @@
+cff-version: 1.2.0
+message: "If you use this software, please also cite Ramsay (1962), Grasemann et al. (2004), and Ramsay & Lisle (2000)."
+title: "superposed-folds"
+authors:
+  - family-names: Lorentzen
+    given-names: Mads
+date-released: 2026-05-04
+license: MIT
+references:
+  - type: article
+    authors:
+      - family-names: Ramsay
+        given-names: J. G.
+    year: 1962
+    title: "Interference patterns produced by the superposition of folds of similar type"
+    journal: "The Journal of Geology"
+    volume: 70
+    start: 466
+    end: 481
+  - type: article
+    authors:
+      - family-names: Grasemann
+        given-names: B.
+    year: 2004
+    title: "Reverse and normal drag along a fault"
+    journal: "The Journal of Geology"
+    volume: 112
+    start: 119
+    end: 125
+  - type: book
+    authors:
+      - family-names: Ramsay
+        given-names: J. G.
+      - family-names: Lisle
+        given-names: R. J.
+    year: 2000
+    title: "The Techniques of Modern Structural Geology, Volume 3: Applications of Continuum Mechanics in Structural Geology"
+    publisher:
+      name: Academic Press

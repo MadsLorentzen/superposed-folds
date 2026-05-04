@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Build artifacts
+build/
+dist/
+*.whl
+
+# Streamlit cache
+.streamlit/
+
+# Marimo cache (legacy from previous app stack; safe to delete)
+__marimo__/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Brainstorming artifacts (not part of the project)
+.superpowers/
+
+# Local-only archive: previous marimo implementation, design spec/plan
+# from the superpowers workflow. Kept on disk for reference but never
+# committed.
+archive/
