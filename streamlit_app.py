@@ -7,6 +7,9 @@ Run locally with:
 
 from __future__ import annotations
 
+import hashlib
+import inspect
+
 import streamlit as st
 
 from superposed_folds import (
@@ -20,7 +23,18 @@ from superposed_folds import (
     fig_3d_stack,
     fig_stereonet,
 )
+from superposed_folds import viz as _viz_module
 from superposed_folds.references import REFERENCES
+
+# Cache-busting fingerprint: changes whenever viz.py's source changes.
+# Streamlit's `@st.cache_data` keys cached entries by the wrapper function's
+# own source code plus the arg values, so edits to functions called from the
+# wrapper (e.g. `fig_2d_interference` in viz.py) don't invalidate the cache
+# on their own. Passing this fingerprint as an argument makes any change to
+# viz.py invalidate every cached figure on the next module reload.
+_VIZ_SOURCE_FINGERPRINT = hashlib.md5(
+    inspect.getsource(_viz_module).encode("utf-8")
+).hexdigest()
 
 st.set_page_config(page_title="Superposed Folds", layout="wide")
 
@@ -73,6 +87,7 @@ def _on_preset_change() -> None:
 @st.cache_data(show_spinner=False, max_entries=128)
 def _cached_fig_3d(
     A1: float, B1: float, dipdir2: float, dip2: float, rake2: float, A2: float, B2: float,
+    _viz_fingerprint: str,
 ):
     f1 = FoldParameters(A=A1, B=B1, dip_dir=0.0, dip=90.0, rake=0.0)
     f2 = FoldParameters(A=A2, B=B2, dip_dir=dipdir2, dip=dip2, rake=rake2)
@@ -82,6 +97,7 @@ def _cached_fig_3d(
 @st.cache_data(show_spinner=False, max_entries=128)
 def _cached_fig_2d(
     A1: float, B1: float, dipdir2: float, dip2: float, rake2: float, A2: float, B2: float,
+    _viz_fingerprint: str,
 ):
     f1 = FoldParameters(A=A1, B=B1, dip_dir=0.0, dip=90.0, rake=0.0)
     f2 = FoldParameters(A=A2, B=B2, dip_dir=dipdir2, dip=dip2, rake=rake2)
@@ -89,7 +105,7 @@ def _cached_fig_2d(
 
 
 @st.cache_data(show_spinner=False, max_entries=128)
-def _cached_fig_stereonet(dipdir2: float, dip2: float, rake2: float):
+def _cached_fig_stereonet(dipdir2: float, dip2: float, rake2: float, _viz_fingerprint: str):
     f1 = FoldParameters(A=3.0, B=1.0, dip_dir=0.0, dip=90.0, rake=0.0)
     f2 = FoldParameters(A=3.0, B=1.0, dip_dir=dipdir2, dip=dip2, rake=rake2)
     return fig_stereonet(f1, f2)
@@ -171,7 +187,10 @@ def _interactive_panel() -> None:
     with _sidebar_classification.container():
         st.markdown(f"### {type_label}")
         st.write(explainer)
-        st.pyplot(_cached_fig_stereonet(dipdir2, dip2, rake2), width="stretch")
+        st.pyplot(
+            _cached_fig_stereonet(dipdir2, dip2, rake2, _VIZ_SOURCE_FINGERPRINT),
+            width="stretch",
+        )
     with _sidebar_references.container():
         st.markdown("### References")
         for r in REFERENCES:
@@ -183,13 +202,13 @@ def _interactive_panel() -> None:
     col_3d, col_2d = st.columns([3, 2])
     with col_3d:
         st.plotly_chart(
-            _cached_fig_3d(A1, B1, dipdir2, dip2, rake2, A2, B2),
+            _cached_fig_3d(A1, B1, dipdir2, dip2, rake2, A2, B2, _VIZ_SOURCE_FINGERPRINT),
             width="stretch",
             key="fig3d",
         )
     with col_2d:
         st.plotly_chart(
-            _cached_fig_2d(A1, B1, dipdir2, dip2, rake2, A2, B2),
+            _cached_fig_2d(A1, B1, dipdir2, dip2, rake2, A2, B2, _VIZ_SOURCE_FINGERPRINT),
             width="stretch",
             key="fig2d",
         )
