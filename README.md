@@ -6,6 +6,8 @@ port of Martin Schöpfer's MATLAB papermodel resource at the
 implementing the plane-strain superposed-folding equations from Ramsay & Lisle
 (2000) and the extended Grasemann et al. (2004) classification.
 
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://superposed-folds.streamlit.app/)
+
 ![demo](assets/demo.gif)
 
 Pick a Grasemann (2004) preset on the left or move the sliders. The 3D fold
