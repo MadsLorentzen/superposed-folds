@@ -150,12 +150,20 @@ def _interactive_panel() -> None:
     f2 = FoldParameters(A=A2, B=B2, dip_dir=dipdir2, dip=dip2, rake=rake2)
 
     matched = classify_nearest(f1, f2, tol=0.05)
-    type_label = matched.name if matched else "Custom"
-    explainer = (
-        matched.explainer
-        if matched
-        else "Slider state does not match a canonical Grasemann (2004) configuration."
-    )
+    if matched is not None:
+        type_label = matched.name
+        explainer = matched.explainer
+    else:
+        # Off-preset: tell the user what they're closest to so they can
+        # snap back if they want.
+        nearest = classify_nearest(f1, f2, tol=float("inf"))
+        nearest_name = nearest.name if nearest else "(none)"
+        type_label = "Custom configuration"
+        explainer = (
+            "You've moved the sliders away from a canonical Grasemann (2004) "
+            f"preset. Closest preset: **{nearest_name}** — pick it from the "
+            "dropdown above to snap back."
+        )
 
     # Update the sidebar placeholders that were created outside this fragment.
     # The .empty() containers from before are addressable from here; writing

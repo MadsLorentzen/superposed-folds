@@ -119,7 +119,10 @@ def fig_2d_interference(
     fig.update_layout(
         xaxis=dict(title="X", scaleanchor="y", scaleratio=1),
         yaxis=dict(title="Y"),
-        margin=dict(l=10, r=10, t=10, b=10),
+        # Generous top margin so the heatmap aligns vertically with the 3D
+        # scene next to it (Plotly's 3D scene reserves more top padding than
+        # a default heatmap, otherwise the 2D content sits visibly higher).
+        margin=dict(l=10, r=10, t=50, b=10),
         height=420,
     )
     return fig
