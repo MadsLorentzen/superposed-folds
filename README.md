@@ -6,12 +6,11 @@ port of Martin Schöpfer's MATLAB papermodel resource at the
 implementing the plane-strain superposed-folding equations from Ramsay & Lisle
 (2000) and the extended Grasemann et al. (2004) classification.
 
-> **Status:** v0.1 in development. Repository is private pending a courtesy
-> reply from Martin Schöpfer.
+![demo](assets/demo.gif)
 
-## Live demo
-
-(Will be linked here once the repo goes public and GitHub Pages is enabled.)
+Pick a Grasemann (2004) preset on the left or move the sliders. The 3D fold
+stack, the 2D interference map at z = 0, the stereonet, and the classification
+readout all update together.
 
 ## What's inside
 
