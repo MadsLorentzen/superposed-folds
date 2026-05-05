@@ -172,7 +172,7 @@ def _interactive_panel() -> None:
             else:
                 st.markdown(f"- {r['label']}")
 
-    col_3d, col_2d = st.columns(2)
+    col_3d, col_2d = st.columns([3, 2])
     with col_3d:
         st.plotly_chart(
             _cached_fig_3d(A1, B1, dipdir2, dip2, rake2, A2, B2),

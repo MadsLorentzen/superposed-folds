@@ -17,6 +17,21 @@ from .geometry import (
 _LAYER_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
 
 
+def _discrete_colorscale(colors: list[str]) -> list[list[float | str]]:
+    """Build a Plotly colorscale that renders crisp bands rather than gradients.
+
+    Each color gets one equal-width slice; paired stops at each band boundary
+    prevent Plotly from interpolating between adjacent colors.
+    """
+    n = len(colors)
+    scale: list[list[float | str]] = []
+    for i, color in enumerate(colors):
+        scale.append([i / n, color])
+        scale.append([(i + 1) / n, color])
+    scale[-1][0] = 1.0  # avoid floating-point drift on the upper bound
+    return scale
+
+
 def fig_3d_stack(
     f1: FoldParameters,
     f2: FoldParameters,
@@ -52,7 +67,7 @@ def fig_3d_stack(
             aspectmode="data",
         ),
         margin=dict(l=0, r=0, t=0, b=0),
-        height=420,
+        height=520,
     )
     return fig
 
@@ -83,12 +98,21 @@ def fig_2d_interference(
     layer_spacing = z_levels[1] - z_levels[0] if n_layers > 1 else 1.0
     layer_index = np.round((Z0 - z_levels[0]) / layer_spacing)
 
+    # Wrap into [0, len(_LAYER_COLORS)) so the same five colors used in the
+    # 3D viewer cycle through the 2D map. This treats the layer stack as
+    # periodic (the standard convention for fold-interference figures) and
+    # keeps the visual mapping between 3D and 2D immediate.
+    n_colors = len(_LAYER_COLORS)
+    layer_index_wrapped = layer_index.astype(int) % n_colors
+
     fig = go.Figure(
         data=go.Heatmap(
             x=xs,
             y=ys,
-            z=layer_index,
-            colorscale="Viridis",
+            z=layer_index_wrapped,
+            colorscale=_discrete_colorscale(_LAYER_COLORS),
+            zmin=-0.5,
+            zmax=n_colors - 0.5,
             showscale=False,
         )
     )
@@ -96,7 +120,7 @@ def fig_2d_interference(
         xaxis=dict(title="X", scaleanchor="y", scaleratio=1),
         yaxis=dict(title="Y"),
         margin=dict(l=10, r=10, t=10, b=10),
-        height=320,
+        height=420,
     )
     return fig
 
