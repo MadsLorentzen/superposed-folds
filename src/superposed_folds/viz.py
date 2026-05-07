@@ -405,13 +405,19 @@ def fig_2d_drill_core_unrolled(
     angle on the X axis (0 to 360 degrees). Reuses the same `layer_idx`
     array as the 3D trace, and the same discrete palette.
 
-    When `inside_mask` is given (a 1D bool array of length `n_axial`),
-    the strip is split into two heatmap layers: rows where the mask is
-    True render at full opacity (cylinder is sampling the model's
-    original layer stack); rows where the mask is False render at
-    `fade_opacity` (cylinder is in the model's periodic continuation,
-    above or below the original layer stack). Each layer NaN-masks the
-    other so cells appear in exactly one of the two traces.
+    When `inside_mask` is given, the strip is split into two heatmap
+    layers: cells where the mask is True render at full opacity
+    (cylinder is sampling the model's original layer stack); cells
+    where the mask is False render at `fade_opacity` (cylinder is in
+    the model's periodic continuation, above or below the original
+    layer stack). Each layer NaN-masks the other so cells appear in
+    exactly one of the two traces.
+
+    `inside_mask` may be either 1D of shape `(n_axial,)` (one
+    inside/outside decision per axial row, broadcast to all theta
+    columns; gives a flat horizontal boundary) or 2D of shape
+    `(n_axial, n_circ)` (per-cell decision; the boundary follows the
+    layer-stack topology, which is the geometrically faithful choice).
     """
     n_axial, n_circ = layer_idx.shape
     theta_deg = np.linspace(0.0, 360.0, n_circ)
@@ -433,15 +439,20 @@ def fig_2d_drill_core_unrolled(
         fig.add_trace(go.Heatmap(z=z_float, **common))
     else:
         inside = np.asarray(inside_mask, dtype=bool)
-        if bool(inside.all()):
+        # Broadcast 1D (per-row) to 2D (per-cell) so downstream code
+        # handles both shapes uniformly.
+        if inside.ndim == 1:
+            inside_2d = np.broadcast_to(inside[:, None], layer_idx.shape)
+        else:
+            inside_2d = inside
+        if bool(inside_2d.all()):
             fig.add_trace(go.Heatmap(z=z_float, **common))
-        elif not bool(inside.any()):
+        elif not bool(inside_2d.any()):
             if fade_opacity > 0.0:
                 fig.add_trace(
                     go.Heatmap(z=z_float, opacity=fade_opacity, **common)
                 )
         else:
-            inside_2d = inside[:, None]
             z_inside = np.where(inside_2d, z_float, np.nan)
             fig.add_trace(go.Heatmap(z=z_inside, **common))
             if fade_opacity > 0.0:

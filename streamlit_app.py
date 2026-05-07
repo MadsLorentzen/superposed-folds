@@ -353,8 +353,9 @@ def _interactive_panel() -> None:
             spacing = extent / (n_layers - 1) if n_layers > 1 else extent
             half_band = extent / 2.0 + spacing / 2.0
             in_stack_per_vertex = (Z0c >= -half_band) & (Z0c <= half_band)
-            # Aggregate per axial row: row counts as "inside" if the
-            # majority of its circumferential samples are inside.
+            # 3D Surface only supports per-trace opacity, so collapse the
+            # per-vertex mask to a per-row decision (majority vote across
+            # theta) for the 3D split.
             inside_row = in_stack_per_vertex.mean(axis=1) >= 0.5
             for core_trace in fig_3d_drill_core_trace(
                 Xc, Yc, Zc, layer_idx_c, inside_mask=inside_row
@@ -386,9 +387,14 @@ def _interactive_panel() -> None:
                 "Unrolled drill-core section</h5>",
                 unsafe_allow_html=True,
             )
+            # Pass the 2D per-vertex mask so the unrolled strip's fade
+            # boundary follows the layer-stack topology (wavy) instead
+            # of a flat horizontal cutoff.
             st.plotly_chart(
                 fig_2d_drill_core_unrolled(
-                    layer_idx_c, core.length, inside_mask=inside_row
+                    layer_idx_c,
+                    core.length,
+                    inside_mask=in_stack_per_vertex,
                 ),
                 width="stretch",
                 key="figunrolled",
