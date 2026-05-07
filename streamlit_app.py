@@ -326,8 +326,13 @@ def _interactive_panel() -> None:
             # object and pollute future cache hits.
             fig_3d = go.Figure(fig_3d)
             if not bool(st.session_state["show_layer_surfaces"]):
+                # Hide only the layer Surface traces; keep the north
+                # arrow (Scatter3d shaft + Cone head) visible. The
+                # drill-core surface is added below and so isn't
+                # affected here.
                 for trace in fig_3d.data:
-                    trace.visible = False
+                    if isinstance(trace, go.Surface):
+                        trace.visible = False
             # A cylinder vertex is "in the original layer stack" iff its
             # initial-z value rounds to one of the n_layers bin centers
             # (i.e. its raw layer index falls in [0, n_layers-1] before the
@@ -364,7 +369,9 @@ def _interactive_panel() -> None:
         _, col_unroll, _ = st.columns([1, 2, 1])
         with col_unroll:
             st.plotly_chart(
-                fig_2d_drill_core_unrolled(layer_idx_c, core.length),
+                fig_2d_drill_core_unrolled(
+                    layer_idx_c, core.length, inside_mask=inside_row
+                ),
                 width="stretch",
                 key="figunrolled",
             )

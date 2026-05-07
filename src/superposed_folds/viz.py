@@ -89,6 +89,42 @@ def fig_3d_stack(
             )
         )
 
+    # 3D north arrow (shaft + cone arrowhead) lying on z=0, pointing +Y.
+    arrow_color = "black"
+    arrow_shaft_y_start = extent * 0.40
+    arrow_shaft_y_end = extent * 0.70
+    arrow_size = extent * 0.18
+    fig.add_trace(
+        go.Scatter3d(
+            x=[0.0, 0.0],
+            y=[arrow_shaft_y_start, arrow_shaft_y_end],
+            z=[0.0, 0.0],
+            mode="lines",
+            line=dict(color=arrow_color, width=10),
+            name="north",
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+    fig.add_trace(
+        go.Cone(
+            x=[0.0],
+            y=[arrow_shaft_y_end],
+            z=[0.0],
+            u=[0.0],
+            v=[arrow_size],
+            w=[0.0],
+            sizemode="absolute",
+            sizeref=arrow_size,
+            anchor="tail",
+            showscale=False,
+            colorscale=[[0, arrow_color], [1, arrow_color]],
+            name="north",
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+
     # Compute a z-axis range that fits the actual folded layer surfaces
     # (which can extend well beyond +/-extent for high-amplitude folds)
     # while staying at least as wide as +/-extent so the drill-core
@@ -123,14 +159,14 @@ def fig_3d_stack(
                 dict(
                     showarrow=False,
                     x=0.0,
-                    y=extent,
+                    y=extent * 0.95,
                     z=0.0,
                     text="<b>N</b>",
-                    font=dict(size=24, color="black"),
+                    font=dict(size=20, color="black"),
                     bgcolor="rgba(255, 255, 255, 0.85)",
                     bordercolor="black",
                     borderwidth=1,
-                    borderpad=4,
+                    borderpad=3,
                 )
             ],
         ),
@@ -259,7 +295,7 @@ def fig_3d_drill_core_trace(
     Z: NDArray[np.floating],
     layer_idx: NDArray[np.integer],
     inside_mask: NDArray[np.bool_] | None = None,
-    fade_opacity: float = 0.0,
+    fade_opacity: float = 0.05,
 ) -> list[go.Surface]:
     """Plotly Surface traces for a drill core embedded in the 3D layer
     stack. Uses the same discrete colorscale as the 2D map and the layer
@@ -348,27 +384,59 @@ def fig_3d_drill_core_trace(
 def fig_2d_drill_core_unrolled(
     layer_idx: NDArray[np.integer],
     length: float,
+    inside_mask: NDArray[np.bool_] | None = None,
+    fade_opacity: float = 0.05,
 ) -> go.Figure:
     """Heatmap of the drill core unrolled flat: depth from collar on the
     Y axis (0 at top, increasing downward to `length`), circumferential
     angle on the X axis (0 to 360 degrees). Reuses the same `layer_idx`
     array as the 3D trace, and the same discrete palette.
+
+    When `inside_mask` is given (a 1D bool array of length `n_axial`),
+    the strip is split into two heatmap layers: rows where the mask is
+    True render at full opacity (cylinder is sampling the model's
+    original layer stack); rows where the mask is False render at
+    `fade_opacity` (cylinder is in the model's periodic continuation,
+    above or below the original layer stack). Each layer NaN-masks the
+    other so cells appear in exactly one of the two traces.
     """
     n_axial, n_circ = layer_idx.shape
     theta_deg = np.linspace(0.0, 360.0, n_circ)
     depth = np.linspace(0.0, length, n_axial)
     n_colors = len(_LAYER_COLORS)
-    fig = go.Figure(
-        data=go.Heatmap(
-            x=theta_deg,
-            y=depth,
-            z=layer_idx,
-            colorscale=_discrete_colorscale(_LAYER_COLORS),
-            zmin=-0.5,
-            zmax=n_colors - 0.5,
-            showscale=False,
-        )
+    z_float = layer_idx.astype(float)
+
+    common = dict(
+        x=theta_deg,
+        y=depth,
+        colorscale=_discrete_colorscale(_LAYER_COLORS),
+        zmin=-0.5,
+        zmax=n_colors - 0.5,
+        showscale=False,
     )
+
+    fig = go.Figure()
+    if inside_mask is None:
+        fig.add_trace(go.Heatmap(z=z_float, **common))
+    else:
+        inside = np.asarray(inside_mask, dtype=bool)
+        if bool(inside.all()):
+            fig.add_trace(go.Heatmap(z=z_float, **common))
+        elif not bool(inside.any()):
+            if fade_opacity > 0.0:
+                fig.add_trace(
+                    go.Heatmap(z=z_float, opacity=fade_opacity, **common)
+                )
+        else:
+            inside_2d = inside[:, None]
+            z_inside = np.where(inside_2d, z_float, np.nan)
+            fig.add_trace(go.Heatmap(z=z_inside, **common))
+            if fade_opacity > 0.0:
+                z_outside = np.where(~inside_2d, z_float, np.nan)
+                fig.add_trace(
+                    go.Heatmap(z=z_outside, opacity=fade_opacity, **common)
+                )
+
     fig.update_layout(
         xaxis=dict(title="θ around core (°)"),
         # Depth increases downward; reverse the y-axis so the collar is on top.
