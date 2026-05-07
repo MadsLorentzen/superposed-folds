@@ -29,17 +29,21 @@ from superposed_folds import (
     fig_stereonet,
     sample_layers_on_cylinder,
 )
+from superposed_folds import cylinder as _cylinder_module
 from superposed_folds import viz as _viz_module
 from superposed_folds.references import REFERENCES
 
-# Cache-busting fingerprint: changes whenever viz.py's source changes.
-# Streamlit's `@st.cache_data` keys cached entries by the wrapper function's
-# own source code plus the arg values, so edits to functions called from the
-# wrapper (e.g. `fig_2d_interference` in viz.py) don't invalidate the cache
-# on their own. Passing this fingerprint as an argument makes any change to
-# viz.py invalidate every cached figure on the next module reload.
+# Cache-busting fingerprint: changes whenever viz.py or cylinder.py source
+# changes. Streamlit's `@st.cache_data` keys cached entries by the wrapper
+# function's own source code plus the arg values, so edits to functions
+# called from the wrapper (e.g. `fig_2d_interference` in viz.py or
+# `sample_layers_on_cylinder` in cylinder.py) don't invalidate the cache
+# on their own, including when their return shape changes. Passing this
+# fingerprint as an argument makes any change to either module invalidate
+# every cached figure or data tuple on the next module reload.
 _VIZ_SOURCE_FINGERPRINT = hashlib.md5(
     inspect.getsource(_viz_module).encode("utf-8")
+    + inspect.getsource(_cylinder_module).encode("utf-8")
 ).hexdigest()
 
 st.set_page_config(page_title="Superposed Folds", layout="wide")
