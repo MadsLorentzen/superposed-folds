@@ -98,6 +98,7 @@ _DRILL_CORE_DEFAULTS: dict[str, float | int | bool] = {
     "plunge": 90.0,
     "core_length": 5.0,
     "core_diameter": 0.4,
+    "core_resolution": 200,
     "map_resolution": 120,
 }
 for _key, _value in _DRILL_CORE_DEFAULTS.items():
@@ -248,6 +249,20 @@ def _interactive_panel() -> None:
                 "Core diameter", 0.05, 1.5, step=0.05, key="core_diameter",
                 help="Visualization probe diameter, not a real drill bit size.",
             )
+        res_cols = st.columns([1, 3])
+        with res_cols[0]:
+            st.slider(
+                "Core resolution",
+                min_value=50,
+                max_value=400,
+                step=25,
+                key="core_resolution",
+                help=(
+                    "Number of axial and circumferential samples on the "
+                    "cylinder surface. Higher values give a smoother "
+                    "unrolled strip and 3D core, at higher compute cost."
+                ),
+            )
 
     A1 = st.session_state["A1"]
     B1 = st.session_state["B1"]
@@ -262,6 +277,7 @@ def _interactive_panel() -> None:
 
     drill_core_enabled = bool(st.session_state["drill_core_enabled"])
     if drill_core_enabled:
+        core_resolution = int(st.session_state["core_resolution"])
         core = DrillCoreParameters(
             collar_x=float(st.session_state["collar_x"]),
             collar_y=float(st.session_state["collar_y"]),
@@ -270,6 +286,8 @@ def _interactive_panel() -> None:
             plunge_deg=float(st.session_state["plunge"]),
             length=float(st.session_state["core_length"]),
             diameter=float(st.session_state["core_diameter"]),
+            n_axial=core_resolution,
+            n_circ=core_resolution,
         )
         Xc, Yc, Zc, layer_idx_c, Z0c = _cached_drill_core_data(
             f1, f2, core, 5, 5.0, _VIZ_SOURCE_FINGERPRINT
@@ -322,6 +340,7 @@ def _interactive_panel() -> None:
 
     col_3d, col_2d = st.columns([3, 2])
     with col_3d:
+        st.markdown("#### 3D fold model")
         fig_3d = _cached_fig_3d_layers(f1, f2, _VIZ_SOURCE_FINGERPRINT)
         if drill_core_enabled:
             # Shallow-copy the cached figure before mutating, otherwise
@@ -357,6 +376,7 @@ def _interactive_panel() -> None:
                 fig_3d.add_trace(core_trace)
         st.plotly_chart(fig_3d, width="stretch", key="fig3d")
     with col_2d:
+        st.markdown("#### Map view: 2D interference pattern (z = 0)")
         fig_2d = _cached_fig_2d_map(
             f1, f2, int(st.session_state["map_resolution"]), _VIZ_SOURCE_FINGERPRINT
         )
@@ -371,6 +391,7 @@ def _interactive_panel() -> None:
         # it reads as a vertical column rather than a wide thin band.
         _, col_unroll, _ = st.columns([1, 2, 1])
         with col_unroll:
+            st.markdown("#### Unrolled drill-core section")
             st.plotly_chart(
                 fig_2d_drill_core_unrolled(
                     layer_idx_c, core.length, inside_mask=inside_row
