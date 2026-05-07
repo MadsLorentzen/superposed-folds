@@ -198,16 +198,19 @@ def _interactive_panel() -> None:
             )
 
     with st.expander("Drill core", expanded=False):
-        st.checkbox("Enable drill core", key="drill_core_enabled")
-        st.checkbox(
-            "Show layer surfaces in 3D viewer",
-            key="show_layer_surfaces",
-            help=(
-                "Hide the folded layer surfaces in the 3D viewer to see "
-                "the drill core on its own. Has no effect when the drill "
-                "core is disabled."
-            ),
-        )
+        dc_toggle_a, dc_toggle_b = st.columns(2)
+        with dc_toggle_a:
+            st.checkbox("Enable drill core", key="drill_core_enabled")
+        with dc_toggle_b:
+            st.checkbox(
+                "Show layer surfaces in 3D viewer",
+                key="show_layer_surfaces",
+                help=(
+                    "Hide the folded layer surfaces in the 3D viewer to "
+                    "see the drill core on its own. Has no effect when "
+                    "the drill core is disabled."
+                ),
+            )
         dc_col_a, dc_col_b, dc_col_c = st.columns(3)
         with dc_col_a:
             st.slider("Collar X", -5.0, 5.0, step=0.1, key="collar_x")

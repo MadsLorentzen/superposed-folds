@@ -88,10 +88,21 @@ def fig_3d_stack(
         )
     fig.update_layout(
         scene=dict(
-            xaxis_title="X (East, km)",
-            yaxis_title="Y (North, km)",
-            zaxis_title="Z (km)",
-            aspectmode="data",
+            # Lock each axis to [-extent, extent] so the scene's size and
+            # aspect stay fixed regardless of which traces are visible.
+            # Without this, hiding the layer surfaces makes Plotly autorange
+            # to fit only the drill-core trace, which rescales the whole
+            # view.
+            xaxis=dict(
+                title="X (East, km)", range=[-extent, extent], autorange=False
+            ),
+            yaxis=dict(
+                title="Y (North, km)", range=[-extent, extent], autorange=False
+            ),
+            zaxis=dict(
+                title="Z (km)", range=[-extent, extent], autorange=False
+            ),
+            aspectmode="cube",
             annotations=[
                 dict(
                     showarrow=False,
@@ -107,6 +118,9 @@ def fig_3d_stack(
                 )
             ],
         ),
+        # Preserve camera position across reruns when only visibility
+        # toggles change; the value is constant so user pan/rotate is kept.
+        uirevision="3d-scene-locked",
         margin=dict(l=0, r=0, t=0, b=0),
         height=520,
     )
