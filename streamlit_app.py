@@ -15,10 +15,10 @@ import streamlit as st
 
 from superposed_folds import (
     ALL_PRESETS,
-    DrillCoreParameters,
     END_MEMBERS,
     OBLIQUE_ROTATION,
     PARALLEL_ROTATION,
+    DrillCoreParameters,
     FoldParameters,
     classify_nearest,
     drill_core_map_overlay_traces,

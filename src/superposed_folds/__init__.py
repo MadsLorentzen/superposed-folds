@@ -34,11 +34,11 @@ __version__ = "0.1.0.dev0"
 
 __all__ = [
     "ALL_PRESETS",
-    "DrillCoreParameters",
     "END_MEMBERS",
-    "FoldParameters",
     "OBLIQUE_ROTATION",
     "PARALLEL_ROTATION",
+    "DrillCoreParameters",
+    "FoldParameters",
     "Preset",
     "apply_fold",
     "apply_superposed_fold",
