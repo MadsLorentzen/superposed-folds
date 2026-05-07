@@ -69,12 +69,14 @@ def fig_3d_stack(
 ) -> go.Figure:
     """Render the 3D superposed-fold stack as `n_layers` colored surfaces."""
     fig = go.Figure()
+    z_arrays: list[NDArray[np.floating]] = []
     for (X0, Y0, Z0), color in zip(
         make_layer_stack(n_layers=n_layers, extent=extent, n_grid=n_grid),
         _LAYER_COLORS,
         strict=False,
     ):
         Xf, Yf, Zf = apply_superposed_fold(X0, Y0, Z0, f1, f2)
+        z_arrays.append(Zf)
         fig.add_trace(
             go.Surface(
                 x=Xf,
@@ -86,13 +88,22 @@ def fig_3d_stack(
                 name=f"layer z₀={Z0[0, 0]:+.2f}",
             )
         )
+
+    # Compute a z-axis range that fits the actual folded layer surfaces
+    # (which can extend well beyond +/-extent for high-amplitude folds)
+    # while staying at least as wide as +/-extent so the drill-core
+    # cylinder, which the user can place anywhere in [-extent, extent]
+    # along z, also fits. The 5% pad keeps surfaces from touching the
+    # box edge. The range is recomputed only when the cached figure is
+    # rebuilt (i.e. when F1/F2 changes); toggling layer-surface
+    # visibility from the app does not retrigger autorange because each
+    # axis has autorange=False.
+    all_z = np.concatenate([z.ravel() for z in z_arrays])
+    z_data_half = float(max(abs(all_z.min()), abs(all_z.max())))
+    z_half = max(z_data_half, extent) * 1.05
+
     fig.update_layout(
         scene=dict(
-            # Lock each axis to [-extent, extent] so the scene's size and
-            # aspect stay fixed regardless of which traces are visible.
-            # Without this, hiding the layer surfaces makes Plotly autorange
-            # to fit only the drill-core trace, which rescales the whole
-            # view.
             xaxis=dict(
                 title="X (East, km)", range=[-extent, extent], autorange=False
             ),
@@ -100,9 +111,14 @@ def fig_3d_stack(
                 title="Y (North, km)", range=[-extent, extent], autorange=False
             ),
             zaxis=dict(
-                title="Z (km)", range=[-extent, extent], autorange=False
+                title="Z (km)", range=[-z_half, z_half], autorange=False
             ),
-            aspectmode="cube",
+            # Data aspect: the scene proportions follow the explicit
+            # axis ranges. With z half-width >= x/y half-width, the
+            # scene will appear taller than wide for high-amplitude
+            # folds, which is geologically faithful (no vertical
+            # exaggeration).
+            aspectmode="data",
             annotations=[
                 dict(
                     showarrow=False,
@@ -243,7 +259,7 @@ def fig_3d_drill_core_trace(
     Z: NDArray[np.floating],
     layer_idx: NDArray[np.integer],
     inside_mask: NDArray[np.bool_] | None = None,
-    fade_opacity: float = 0.2,
+    fade_opacity: float = 0.0,
 ) -> list[go.Surface]:
     """Plotly Surface traces for a drill core embedded in the 3D layer
     stack. Uses the same discrete colorscale as the 2D map and the layer
@@ -255,9 +271,11 @@ def fig_3d_drill_core_trace(
     sampling the model's original layer stack); rows where the mask is
     False render at `fade_opacity` (the cylinder is in the model's
     periodic continuation, above or below the original layer stack).
-    When `inside_mask` is None, returns a single full-opacity trace.
+    When `fade_opacity <= 0`, outside segments are dropped entirely
+    rather than rendered as invisible traces. When `inside_mask` is
+    None, returns a single full-opacity trace.
 
-    Returns a list of 1 to 3 Surface traces. The Streamlit app composes
+    Returns a list of 0 to 3 Surface traces. The Streamlit app composes
     them onto the cached layer-stack figure with `add_trace` so changes
     to drill-core parameters do not invalidate the layer-surface cache.
     """
@@ -269,39 +287,36 @@ def fig_3d_drill_core_trace(
         showscale=False,
     )
 
+    def _outside_trace(Xs, Ys, Zs, ls):
+        if fade_opacity <= 0.0:
+            return None
+        return go.Surface(
+            x=Xs, y=Ys, z=Zs,
+            surfacecolor=ls,
+            opacity=fade_opacity,
+            name="drill core (outside layer stack)",
+            **common,
+        )
+
+    def _inside_trace(Xs, Ys, Zs, ls):
+        return go.Surface(
+            x=Xs, y=Ys, z=Zs,
+            surfacecolor=ls,
+            opacity=1.0,
+            name="drill core",
+            **common,
+        )
+
     if inside_mask is None:
-        return [
-            go.Surface(
-                x=X, y=Y, z=Z,
-                surfacecolor=layer_idx,
-                opacity=1.0,
-                name="drill core",
-                **common,
-            )
-        ]
+        return [_inside_trace(X, Y, Z, layer_idx)]
 
     inside = np.asarray(inside_mask, dtype=bool)
 
     if bool(inside.all()):
-        return [
-            go.Surface(
-                x=X, y=Y, z=Z,
-                surfacecolor=layer_idx,
-                opacity=1.0,
-                name="drill core",
-                **common,
-            )
-        ]
+        return [_inside_trace(X, Y, Z, layer_idx)]
     if not bool(inside.any()):
-        return [
-            go.Surface(
-                x=X, y=Y, z=Z,
-                surfacecolor=layer_idx,
-                opacity=fade_opacity,
-                name="drill core (outside layer stack)",
-                **common,
-            )
-        ]
+        outside = _outside_trace(X, Y, Z, layer_idx)
+        return [outside] if outside is not None else []
 
     # Split into contiguous inside/outside segments. Each segment
     # includes one row of overlap with the next so the rendering stays
@@ -321,17 +336,12 @@ def fig_3d_drill_core_trace(
         ls = layer_idx[start:end_with_overlap]
         if Xs.shape[0] < 2:
             continue
-        traces.append(
-            go.Surface(
-                x=Xs, y=Ys, z=Zs,
-                surfacecolor=ls,
-                opacity=1.0 if is_inside else fade_opacity,
-                name="drill core" if is_inside else (
-                    "drill core (outside layer stack)"
-                ),
-                **common,
-            )
-        )
+        if is_inside:
+            traces.append(_inside_trace(Xs, Ys, Zs, ls))
+        else:
+            outside = _outside_trace(Xs, Ys, Zs, ls)
+            if outside is not None:
+                traces.append(outside)
     return traces
 
 
