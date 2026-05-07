@@ -98,9 +98,13 @@ _DRILL_CORE_DEFAULTS: dict[str, float | int | bool] = {
     "plunge": 90.0,
     "core_length": 5.0,
     "core_diameter": 0.4,
-    "core_resolution": 200,
-    "map_resolution": 120,
 }
+
+# Hardcoded resolution for the 2D map and the unrolled core section.
+# Both used to be user-controlled sliders; we settled on 400 as a single
+# fixed value that gives a smooth render without being too slow.
+_MAP_RESOLUTION = 400
+_CORE_RESOLUTION = 400
 for _key, _value in _DRILL_CORE_DEFAULTS.items():
     if _key not in st.session_state:
         st.session_state[_key] = _value
@@ -196,13 +200,6 @@ def _interactive_panel() -> None:
             st.slider("F2 axial-plane dip (°)", 0.0, 90.0, step=1.0, key="dip2")
         with col_d:
             st.slider("F2 rake (axis pitch, °)", -90.0, 90.0, step=1.0, key="rake2")
-            st.slider(
-                "Map resolution (px)",
-                min_value=80,
-                max_value=400,
-                step=20,
-                key="map_resolution",
-            )
 
     with st.expander("Drill core", expanded=False):
         dc_toggle_a, dc_toggle_b = st.columns(2)
@@ -249,20 +246,6 @@ def _interactive_panel() -> None:
                 "Core diameter", 0.05, 1.5, step=0.05, key="core_diameter",
                 help="Visualization probe diameter, not a real drill bit size.",
             )
-        res_cols = st.columns([1, 3])
-        with res_cols[0]:
-            st.slider(
-                "Core resolution",
-                min_value=50,
-                max_value=400,
-                step=25,
-                key="core_resolution",
-                help=(
-                    "Number of axial and circumferential samples on the "
-                    "cylinder surface. Higher values give a smoother "
-                    "unrolled strip and 3D core, at higher compute cost."
-                ),
-            )
 
     A1 = st.session_state["A1"]
     B1 = st.session_state["B1"]
@@ -277,7 +260,6 @@ def _interactive_panel() -> None:
 
     drill_core_enabled = bool(st.session_state["drill_core_enabled"])
     if drill_core_enabled:
-        core_resolution = int(st.session_state["core_resolution"])
         core = DrillCoreParameters(
             collar_x=float(st.session_state["collar_x"]),
             collar_y=float(st.session_state["collar_y"]),
@@ -286,8 +268,8 @@ def _interactive_panel() -> None:
             plunge_deg=float(st.session_state["plunge"]),
             length=float(st.session_state["core_length"]),
             diameter=float(st.session_state["core_diameter"]),
-            n_axial=core_resolution,
-            n_circ=core_resolution,
+            n_axial=_CORE_RESOLUTION,
+            n_circ=_CORE_RESOLUTION,
         )
         Xc, Yc, Zc, layer_idx_c, Z0c = _cached_drill_core_data(
             f1, f2, core, 5, 5.0, _VIZ_SOURCE_FINGERPRINT
@@ -386,7 +368,7 @@ def _interactive_panel() -> None:
             unsafe_allow_html=True,
         )
         fig_2d = _cached_fig_2d_map(
-            f1, f2, int(st.session_state["map_resolution"]), _VIZ_SOURCE_FINGERPRINT
+            f1, f2, _MAP_RESOLUTION, _VIZ_SOURCE_FINGERPRINT
         )
         if drill_core_enabled:
             fig_2d = go.Figure(fig_2d)
