@@ -85,29 +85,23 @@ def _on_preset_change() -> None:
 # ----- Cached figure builders ---------------------------------------------
 
 @st.cache_data(show_spinner=False, max_entries=128)
-def _cached_fig_3d(
-    A1: float, B1: float, dipdir2: float, dip2: float, rake2: float, A2: float, B2: float,
-    _viz_fingerprint: str,
+def _cached_fig_3d_layers(
+    f1: FoldParameters, f2: FoldParameters, _viz_fingerprint: str
 ):
-    f1 = FoldParameters(A=A1, B=B1, dip_dir=0.0, dip=90.0, rake=0.0)
-    f2 = FoldParameters(A=A2, B=B2, dip_dir=dipdir2, dip=dip2, rake=rake2)
     return fig_3d_stack(f1, f2, n_grid=48)
 
 
 @st.cache_data(show_spinner=False, max_entries=128)
-def _cached_fig_2d(
-    A1: float, B1: float, dipdir2: float, dip2: float, rake2: float, A2: float, B2: float,
-    _viz_fingerprint: str,
+def _cached_fig_2d_map(
+    f1: FoldParameters, f2: FoldParameters, n_grid: int, _viz_fingerprint: str
 ):
-    f1 = FoldParameters(A=A1, B=B1, dip_dir=0.0, dip=90.0, rake=0.0)
-    f2 = FoldParameters(A=A2, B=B2, dip_dir=dipdir2, dip=dip2, rake=rake2)
-    return fig_2d_interference(f1, f2, n_grid=120)
+    return fig_2d_interference(f1, f2, n_grid=n_grid)
 
 
 @st.cache_data(show_spinner=False, max_entries=128)
-def _cached_fig_stereonet(dipdir2: float, dip2: float, rake2: float, _viz_fingerprint: str):
-    f1 = FoldParameters(A=3.0, B=1.0, dip_dir=0.0, dip=90.0, rake=0.0)
-    f2 = FoldParameters(A=3.0, B=1.0, dip_dir=dipdir2, dip=dip2, rake=rake2)
+def _cached_fig_stereonet(
+    f1: FoldParameters, f2: FoldParameters, _viz_fingerprint: str
+):
     return fig_stereonet(f1, f2)
 
 
@@ -187,8 +181,16 @@ def _interactive_panel() -> None:
     with _sidebar_classification.container():
         st.markdown(f"### {type_label}")
         st.write(explainer)
+        f1_orientation = FoldParameters(
+            A=3.0, B=1.0, dip_dir=0.0, dip=90.0, rake=0.0
+        )
+        f2_orientation = FoldParameters(
+            A=3.0, B=1.0, dip_dir=dipdir2, dip=dip2, rake=rake2
+        )
         st.pyplot(
-            _cached_fig_stereonet(dipdir2, dip2, rake2, _VIZ_SOURCE_FINGERPRINT),
+            _cached_fig_stereonet(
+                f1_orientation, f2_orientation, _VIZ_SOURCE_FINGERPRINT
+            ),
             width="stretch",
         )
     with _sidebar_references.container():
@@ -202,13 +204,13 @@ def _interactive_panel() -> None:
     col_3d, col_2d = st.columns([3, 2])
     with col_3d:
         st.plotly_chart(
-            _cached_fig_3d(A1, B1, dipdir2, dip2, rake2, A2, B2, _VIZ_SOURCE_FINGERPRINT),
+            _cached_fig_3d_layers(f1, f2, _VIZ_SOURCE_FINGERPRINT),
             width="stretch",
             key="fig3d",
         )
     with col_2d:
         st.plotly_chart(
-            _cached_fig_2d(A1, B1, dipdir2, dip2, rake2, A2, B2, _VIZ_SOURCE_FINGERPRINT),
+            _cached_fig_2d_map(f1, f2, 120, _VIZ_SOURCE_FINGERPRINT),
             width="stretch",
             key="fig2d",
         )

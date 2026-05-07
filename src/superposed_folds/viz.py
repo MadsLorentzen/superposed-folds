@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import mplstereonet  # noqa: F401  (registers 'stereonet' projection with matplotlib)
 import numpy as np
 import plotly.graph_objects as go
+from numpy.typing import NDArray
 
 from .geometry import (
     FoldParameters,
@@ -30,6 +31,27 @@ def _discrete_colorscale(colors: list[str]) -> list[list[float | str]]:
         scale.append([(i + 1) / n, color])
     scale[-1][0] = 1.0  # avoid floating-point drift on the upper bound
     return scale
+
+
+def layer_index_from_z(
+    z_array: NDArray[np.floating],
+    n_layers: int,
+    extent: float,
+) -> NDArray[np.integer]:
+    """Round per-point initial-z values to integer layer indices and wrap
+    them periodically into the available palette.
+
+    Bin centers are `np.linspace(-extent/2, extent/2, n_layers)`, matching
+    the horizon heights produced by `make_layer_stack` with default
+    `z_span = extent`. The result wraps modulo `len(_LAYER_COLORS)` so the
+    same five colors used in the 3D viewer cycle through the 2D map and
+    the unrolled drill-core strip.
+    """
+    z_levels = np.linspace(-extent / 2.0, extent / 2.0, n_layers)
+    layer_spacing = z_levels[1] - z_levels[0] if n_layers > 1 else 1.0
+    layer_index = np.round((z_array - z_levels[0]) / layer_spacing)
+    n_colors = len(_LAYER_COLORS)
+    return layer_index.astype(int) % n_colors
 
 
 def fig_3d_stack(
@@ -92,18 +114,8 @@ def fig_2d_interference(
     Z = np.full_like(X, z_section)
 
     Z0 = initial_z_at(X, Y, Z, f1, f2)
-    # Bin against the same horizon centers used by `make_layer_stack`, so the
-    # 2D map's colored bands line up with the 3D viewer's colored layers.
-    z_levels = np.linspace(-extent / 2, extent / 2, n_layers)
-    layer_spacing = z_levels[1] - z_levels[0] if n_layers > 1 else 1.0
-    layer_index = np.round((Z0 - z_levels[0]) / layer_spacing)
-
-    # Wrap into [0, len(_LAYER_COLORS)) so the same five colors used in the
-    # 3D viewer cycle through the 2D map. This treats the layer stack as
-    # periodic (the standard convention for fold-interference figures) and
-    # keeps the visual mapping between 3D and 2D immediate.
+    layer_index_wrapped = layer_index_from_z(Z0, n_layers, extent)
     n_colors = len(_LAYER_COLORS)
-    layer_index_wrapped = layer_index.astype(int) % n_colors
 
     fig = go.Figure(
         data=go.Heatmap(
