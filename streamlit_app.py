@@ -27,6 +27,7 @@ from superposed_folds import (
     fig_3d_drill_core_trace,
     fig_3d_stack,
     fig_stereonet,
+    layer_envelope_z_range,
     sample_layers_on_cylinder,
 )
 from superposed_folds import viz as _viz_module
@@ -147,6 +148,22 @@ def _cached_drill_core_data(
     )
 
 
+@st.cache_data(show_spinner=False, max_entries=128)
+def _cached_layer_envelope_z(
+    f1: FoldParameters,
+    f2: FoldParameters,
+    n_layers: int,
+    extent: float,
+    n_grid: int,
+    _viz_fingerprint: str,
+) -> tuple[float, float]:
+    """Cached world-z bounds of the folded layer surfaces. Used to fade
+    drill-core segments that lie outside the visualized horizons."""
+    return layer_envelope_z_range(
+        f1, f2, n_layers=n_layers, extent=extent, n_grid=n_grid
+    )
+
+
 # ----- Sidebar (outside any fragment) -------------------------------------
 #
 # Preset picker on top; static content (classification + refs) gets filled
@@ -200,7 +217,17 @@ def _interactive_panel() -> None:
     with st.expander("Drill core", expanded=False):
         dc_toggle_a, dc_toggle_b = st.columns(2)
         with dc_toggle_a:
-            st.checkbox("Enable drill core", key="drill_core_enabled")
+            st.checkbox(
+                "Enable drill core",
+                key="drill_core_enabled",
+                help=(
+                    "The cylinder samples the layered fold model anywhere "
+                    "you place it. Parts that lie above or below the "
+                    "visualized horizons are rendered at reduced opacity "
+                    "to flag they are showing the model's periodic "
+                    "continuation rather than crossing a drawn surface."
+                ),
+            )
         with dc_toggle_b:
             st.checkbox(
                 "Show layer surfaces in 3D viewer",
@@ -307,9 +334,15 @@ def _interactive_panel() -> None:
             if not bool(st.session_state["show_layer_surfaces"]):
                 for trace in fig_3d.data:
                     trace.visible = False
-            fig_3d.add_trace(
-                fig_3d_drill_core_trace(Xc, Yc, Zc, layer_idx_c)
+            envelope_z_min, envelope_z_max = _cached_layer_envelope_z(
+                f1, f2, 5, 5.0, 48, _VIZ_SOURCE_FINGERPRINT
             )
+            for core_trace in fig_3d_drill_core_trace(
+                Xc, Yc, Zc, layer_idx_c,
+                envelope_z_min=envelope_z_min,
+                envelope_z_max=envelope_z_max,
+            ):
+                fig_3d.add_trace(core_trace)
         st.plotly_chart(fig_3d, width="stretch", key="fig3d")
     with col_2d:
         fig_2d = _cached_fig_2d_map(

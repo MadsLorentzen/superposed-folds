@@ -223,33 +223,135 @@ def fig_stereonet(f1: FoldParameters, f2: FoldParameters) -> plt.Figure:
     return fig
 
 
+def layer_envelope_z_range(
+    f1: FoldParameters,
+    f2: FoldParameters,
+    n_layers: int = 5,
+    extent: float = 5.0,
+    n_grid: int = 48,
+) -> tuple[float, float]:
+    """Return the world-z range spanned by the folded layer surfaces.
+
+    Used to flag drill-core segments that lie above or below the
+    visualized horizons: those segments still sample the model (which is
+    volumetric and periodic), but visually it helps to fade them so the
+    user can see the cylinder is showing the model's periodic
+    continuation rather than passing through one of the drawn horizons.
+
+    The defaults match `fig_3d_stack`'s defaults so the returned range
+    matches what the 3D viewer actually renders.
+    """
+    z_arrays: list[NDArray[np.floating]] = []
+    for X0, Y0, Z0 in make_layer_stack(
+        n_layers=n_layers, extent=extent, n_grid=n_grid
+    ):
+        _, _, Zf = apply_superposed_fold(X0, Y0, Z0, f1, f2)
+        z_arrays.append(Zf)
+    all_z = np.concatenate([z.ravel() for z in z_arrays])
+    return float(all_z.min()), float(all_z.max())
+
+
 def fig_3d_drill_core_trace(
     X: NDArray[np.floating],
     Y: NDArray[np.floating],
     Z: NDArray[np.floating],
     layer_idx: NDArray[np.integer],
-) -> go.Surface:
-    """Plotly Surface trace for a drill core embedded in the 3D layer
+    envelope_z_min: float | None = None,
+    envelope_z_max: float | None = None,
+    fade_opacity: float = 0.3,
+) -> list[go.Surface]:
+    """Plotly Surface traces for a drill core embedded in the 3D layer
     stack. Uses the same discrete colorscale as the 2D map and the layer
     surfaces, so colors match across all three views.
 
-    Returns the trace, not a Figure. The Streamlit app composes it onto
-    the cached layer-stack figure with `add_trace` so changes to drill-core
-    parameters do not invalidate the layer-surface cache.
+    When `envelope_z_min` and `envelope_z_max` are given, the cylinder is
+    split along its axial direction into segments inside vs. outside the
+    visualized layer envelope. Inside segments render at full opacity;
+    outside segments render at `fade_opacity` to flag the cylinder is
+    sampling the model's periodic continuation rather than crossing a
+    drawn horizon. When envelope bounds are None, returns a single
+    full-opacity trace.
+
+    Returns a list of 1 to 3 Surface traces. The Streamlit app composes
+    them onto the cached layer-stack figure with `add_trace` so changes
+    to drill-core parameters do not invalidate the layer-surface cache.
     """
     n_colors = len(_LAYER_COLORS)
-    return go.Surface(
-        x=X,
-        y=Y,
-        z=Z,
-        surfacecolor=layer_idx,
+    common = dict(
         colorscale=_discrete_colorscale(_LAYER_COLORS),
         cmin=-0.5,
         cmax=n_colors - 0.5,
         showscale=False,
-        opacity=1.0,
-        name="drill core",
     )
+
+    if envelope_z_min is None or envelope_z_max is None:
+        return [
+            go.Surface(
+                x=X, y=Y, z=Z,
+                surfacecolor=layer_idx,
+                opacity=1.0,
+                name="drill core",
+                **common,
+            )
+        ]
+
+    # Per axial-row mean z determines whether that row is inside the
+    # envelope. Theta variation in z is small (bounded by r) compared to
+    # the envelope's vertical extent, so a row-wise decision is adequate.
+    z_per_row = Z.mean(axis=1)
+    inside = (z_per_row >= envelope_z_min) & (z_per_row <= envelope_z_max)
+
+    if bool(inside.all()):
+        return [
+            go.Surface(
+                x=X, y=Y, z=Z,
+                surfacecolor=layer_idx,
+                opacity=1.0,
+                name="drill core",
+                **common,
+            )
+        ]
+    if not bool(inside.any()):
+        return [
+            go.Surface(
+                x=X, y=Y, z=Z,
+                surfacecolor=layer_idx,
+                opacity=fade_opacity,
+                name="drill core (outside layer envelope)",
+                **common,
+            )
+        ]
+
+    # Split into contiguous inside/outside segments. Each segment
+    # includes one row of overlap with the next so the rendering stays
+    # visually continuous (Plotly Surface needs at least 2 axial rows).
+    state_changes = np.flatnonzero(np.diff(inside.astype(int))) + 1
+    boundaries = np.concatenate(([0], state_changes, [len(inside)]))
+
+    traces: list[go.Surface] = []
+    for i in range(len(boundaries) - 1):
+        start = int(boundaries[i])
+        end = int(boundaries[i + 1])
+        is_inside = bool(inside[start])
+        end_with_overlap = min(end + 1, len(inside))
+        Xs = X[start:end_with_overlap]
+        Ys = Y[start:end_with_overlap]
+        Zs = Z[start:end_with_overlap]
+        ls = layer_idx[start:end_with_overlap]
+        if Xs.shape[0] < 2:
+            continue
+        traces.append(
+            go.Surface(
+                x=Xs, y=Ys, z=Zs,
+                surfacecolor=ls,
+                opacity=1.0 if is_inside else fade_opacity,
+                name="drill core" if is_inside else (
+                    "drill core (outside layer envelope)"
+                ),
+                **common,
+            )
+        )
+    return traces
 
 
 def fig_2d_drill_core_unrolled(

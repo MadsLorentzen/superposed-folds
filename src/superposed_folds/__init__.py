@@ -27,6 +27,7 @@ from .viz import (
     fig_3d_drill_core_trace,
     fig_3d_stack,
     fig_stereonet,
+    layer_envelope_z_range,
     layer_index_from_z,
 )
 
@@ -51,6 +52,7 @@ __all__ = [
     "fig_3d_stack",
     "fig_stereonet",
     "initial_z_at",
+    "layer_envelope_z_range",
     "layer_index_from_z",
     "make_layer_stack",
     "sample_layers_on_cylinder",
