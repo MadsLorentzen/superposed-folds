@@ -46,7 +46,7 @@ st.set_page_config(page_title="Superposed Folds", layout="wide")
 
 st.markdown(
     """
-    # Superposed Folds — interactive playground
+    # Superposed Folds: interactive playground
 
     A Python port of Martin Schöpfer's UCD MATLAB resource, implementing the
     Ramsay & Lisle (2000) plane-strain superposed-folding equations. Pick a
@@ -170,7 +170,7 @@ with st.sidebar:
 #
 # Sliders live here (not in sidebar) so they can be inside @st.fragment.
 # Streamlit forbids st.sidebar inside fragments; this is the documented
-# workaround. Slider movement reruns only this function — the page header
+# workaround. Slider movement reruns only this function; the page header
 # and sidebar preset picker stay put.
 
 @st.fragment
@@ -253,7 +253,7 @@ def _interactive_panel() -> None:
         type_label = "Custom configuration"
         explainer = (
             "You've moved the sliders away from a canonical Grasemann (2004) "
-            f"preset. Closest preset: **{nearest_name}** — pick it from the "
+            f"preset. Closest preset: **{nearest_name}**. Pick it from the "
             "dropdown above to snap back."
         )
 
