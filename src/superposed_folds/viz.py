@@ -223,54 +223,25 @@ def fig_stereonet(f1: FoldParameters, f2: FoldParameters) -> plt.Figure:
     return fig
 
 
-def layer_envelope_z_range(
-    f1: FoldParameters,
-    f2: FoldParameters,
-    n_layers: int = 5,
-    extent: float = 5.0,
-    n_grid: int = 48,
-) -> tuple[float, float]:
-    """Return the world-z range spanned by the folded layer surfaces.
-
-    Used to flag drill-core segments that lie above or below the
-    visualized horizons: those segments still sample the model (which is
-    volumetric and periodic), but visually it helps to fade them so the
-    user can see the cylinder is showing the model's periodic
-    continuation rather than passing through one of the drawn horizons.
-
-    The defaults match `fig_3d_stack`'s defaults so the returned range
-    matches what the 3D viewer actually renders.
-    """
-    z_arrays: list[NDArray[np.floating]] = []
-    for X0, Y0, Z0 in make_layer_stack(
-        n_layers=n_layers, extent=extent, n_grid=n_grid
-    ):
-        _, _, Zf = apply_superposed_fold(X0, Y0, Z0, f1, f2)
-        z_arrays.append(Zf)
-    all_z = np.concatenate([z.ravel() for z in z_arrays])
-    return float(all_z.min()), float(all_z.max())
-
-
 def fig_3d_drill_core_trace(
     X: NDArray[np.floating],
     Y: NDArray[np.floating],
     Z: NDArray[np.floating],
     layer_idx: NDArray[np.integer],
-    envelope_z_min: float | None = None,
-    envelope_z_max: float | None = None,
-    fade_opacity: float = 0.3,
+    inside_mask: NDArray[np.bool_] | None = None,
+    fade_opacity: float = 0.2,
 ) -> list[go.Surface]:
     """Plotly Surface traces for a drill core embedded in the 3D layer
     stack. Uses the same discrete colorscale as the 2D map and the layer
     surfaces, so colors match across all three views.
 
-    When `envelope_z_min` and `envelope_z_max` are given, the cylinder is
-    split along its axial direction into segments inside vs. outside the
-    visualized layer envelope. Inside segments render at full opacity;
-    outside segments render at `fade_opacity` to flag the cylinder is
-    sampling the model's periodic continuation rather than crossing a
-    drawn horizon. When envelope bounds are None, returns a single
-    full-opacity trace.
+    When `inside_mask` is given (a 1D bool array of length `n_axial`),
+    the cylinder is split into segments along its axial direction.
+    Rows where the mask is True render at full opacity (the cylinder is
+    sampling the model's original layer stack); rows where the mask is
+    False render at `fade_opacity` (the cylinder is in the model's
+    periodic continuation, above or below the original layer stack).
+    When `inside_mask` is None, returns a single full-opacity trace.
 
     Returns a list of 1 to 3 Surface traces. The Streamlit app composes
     them onto the cached layer-stack figure with `add_trace` so changes
@@ -284,7 +255,7 @@ def fig_3d_drill_core_trace(
         showscale=False,
     )
 
-    if envelope_z_min is None or envelope_z_max is None:
+    if inside_mask is None:
         return [
             go.Surface(
                 x=X, y=Y, z=Z,
@@ -295,11 +266,7 @@ def fig_3d_drill_core_trace(
             )
         ]
 
-    # Per axial-row mean z determines whether that row is inside the
-    # envelope. Theta variation in z is small (bounded by r) compared to
-    # the envelope's vertical extent, so a row-wise decision is adequate.
-    z_per_row = Z.mean(axis=1)
-    inside = (z_per_row >= envelope_z_min) & (z_per_row <= envelope_z_max)
+    inside = np.asarray(inside_mask, dtype=bool)
 
     if bool(inside.all()):
         return [
@@ -317,7 +284,7 @@ def fig_3d_drill_core_trace(
                 x=X, y=Y, z=Z,
                 surfacecolor=layer_idx,
                 opacity=fade_opacity,
-                name="drill core (outside layer envelope)",
+                name="drill core (outside layer stack)",
                 **common,
             )
         ]
@@ -346,7 +313,7 @@ def fig_3d_drill_core_trace(
                 surfacecolor=ls,
                 opacity=1.0 if is_inside else fade_opacity,
                 name="drill core" if is_inside else (
-                    "drill core (outside layer envelope)"
+                    "drill core (outside layer stack)"
                 ),
                 **common,
             )

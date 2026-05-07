@@ -27,7 +27,6 @@ from superposed_folds import (
     fig_3d_drill_core_trace,
     fig_3d_stack,
     fig_stereonet,
-    layer_envelope_z_range,
     sample_layers_on_cylinder,
 )
 from superposed_folds import viz as _viz_module
@@ -148,20 +147,6 @@ def _cached_drill_core_data(
     )
 
 
-@st.cache_data(show_spinner=False, max_entries=128)
-def _cached_layer_envelope_z(
-    f1: FoldParameters,
-    f2: FoldParameters,
-    n_layers: int,
-    extent: float,
-    n_grid: int,
-    _viz_fingerprint: str,
-) -> tuple[float, float]:
-    """Cached world-z bounds of the folded layer surfaces. Used to fade
-    drill-core segments that lie outside the visualized horizons."""
-    return layer_envelope_z_range(
-        f1, f2, n_layers=n_layers, extent=extent, n_grid=n_grid
-    )
 
 
 # ----- Sidebar (outside any fragment) -------------------------------------
@@ -274,12 +259,12 @@ def _interactive_panel() -> None:
             length=float(st.session_state["core_length"]),
             diameter=float(st.session_state["core_diameter"]),
         )
-        Xc, Yc, Zc, layer_idx_c = _cached_drill_core_data(
+        Xc, Yc, Zc, layer_idx_c, Z0c = _cached_drill_core_data(
             f1, f2, core, 5, 5.0, _VIZ_SOURCE_FINGERPRINT
         )
     else:
         core = None
-        Xc = Yc = Zc = layer_idx_c = None
+        Xc = Yc = Zc = layer_idx_c = Z0c = None
 
     matched = classify_nearest(f1, f2, tol=0.05)
     if matched is not None:
@@ -334,13 +319,23 @@ def _interactive_panel() -> None:
             if not bool(st.session_state["show_layer_surfaces"]):
                 for trace in fig_3d.data:
                     trace.visible = False
-            envelope_z_min, envelope_z_max = _cached_layer_envelope_z(
-                f1, f2, 5, 5.0, 48, _VIZ_SOURCE_FINGERPRINT
-            )
+            # A cylinder vertex is "in the original layer stack" iff its
+            # initial-z value rounds to one of the n_layers bin centers
+            # (i.e. its raw layer index falls in [0, n_layers-1] before the
+            # mod-wrap). That range corresponds to Z0 within
+            # [-extent/2 - spacing/2, extent/2 + spacing/2]. Outside this
+            # band, the cylinder is sampling the model's periodic
+            # continuation; fade it.
+            n_layers = 5
+            extent = 5.0
+            spacing = extent / (n_layers - 1) if n_layers > 1 else extent
+            half_band = extent / 2.0 + spacing / 2.0
+            in_stack_per_vertex = (Z0c >= -half_band) & (Z0c <= half_band)
+            # Aggregate per axial row: row counts as "inside" if the
+            # majority of its circumferential samples are inside.
+            inside_row = in_stack_per_vertex.mean(axis=1) >= 0.5
             for core_trace in fig_3d_drill_core_trace(
-                Xc, Yc, Zc, layer_idx_c,
-                envelope_z_min=envelope_z_min,
-                envelope_z_max=envelope_z_max,
+                Xc, Yc, Zc, layer_idx_c, inside_mask=inside_row
             ):
                 fig_3d.add_trace(core_trace)
         st.plotly_chart(fig_3d, width="stretch", key="fig3d")

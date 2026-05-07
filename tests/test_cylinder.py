@@ -142,7 +142,7 @@ def test_sample_layers_on_cylinder_uses_initial_z_at():
     )
     f1 = FoldParameters(A=2.0, B=1.0, dip_dir=0.0, dip=90.0, rake=0.0)
     f2 = FoldParameters(A=1.5, B=1.2, dip_dir=45.0, dip=70.0, rake=10.0)
-    X, Y, Z, layer_idx = sample_layers_on_cylinder(
+    X, Y, Z, layer_idx, Z0 = sample_layers_on_cylinder(
         p, f1, f2, n_layers=5, extent=5.0
     )
 
@@ -156,6 +156,7 @@ def test_sample_layers_on_cylinder_uses_initial_z_at():
     )
     expected_idx = layer_index_from_z(expected_z0, n_layers=5, extent=5.0)
     assert int(layer_idx[i, j]) == int(expected_idx[0])
+    np.testing.assert_allclose(Z0[i, j], expected_z0[0], atol=1e-9)
 
 
 def test_sample_layers_on_cylinder_layer_indices_in_range():
@@ -174,7 +175,7 @@ def test_sample_layers_on_cylinder_layer_indices_in_range():
     )
     f1 = FoldParameters(A=2.0, B=1.0, dip_dir=0.0, dip=90.0, rake=0.0)
     f2 = FoldParameters(A=1.5, B=1.2, dip_dir=45.0, dip=70.0, rake=10.0)
-    _, _, _, layer_idx = sample_layers_on_cylinder(
+    _, _, _, layer_idx, _ = sample_layers_on_cylinder(
         p, f1, f2, n_layers=5, extent=5.0
     )
     assert np.all(layer_idx >= 0)

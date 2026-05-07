@@ -113,16 +113,21 @@ def sample_layers_on_cylinder(
     NDArray[np.floating],
     NDArray[np.floating],
     NDArray[np.integer],
+    NDArray[np.floating],
 ]:
     """Sample superposed-fold layer indices on the cylinder surface.
 
-    Returns `(X, Y, Z, layer_idx)` where the first three are the world-frame
-    surface coordinates from `cylinder_surface_points` and `layer_idx` is
-    the discrete layer index at each surface point, computed by inverting
-    the superposed-fold map (via `initial_z_at`) and binning the resulting
-    initial-z values via `layer_index_from_z`.
+    Returns `(X, Y, Z, layer_idx, Z0)` where the first three are the
+    world-frame surface coordinates from `cylinder_surface_points`,
+    `layer_idx` is the discrete layer index at each surface point
+    (computed by inverting the superposed-fold map via `initial_z_at`
+    and binning via `layer_index_from_z`), and `Z0` is the raw initial-z
+    value at each surface point. Callers use `Z0` to detect whether
+    each cylinder vertex lies in the original layer stack
+    (`Z0 ∈ [-extent/2, extent/2]` modulo half a layer spacing) or in
+    the model's periodic continuation.
     """
     X, Y, Z = cylinder_surface_points(p)
     Z0 = initial_z_at(X, Y, Z, f1, f2)
     layer_idx = layer_index_from_z(Z0, n_layers, extent)
-    return X, Y, Z, layer_idx
+    return X, Y, Z, layer_idx, Z0
