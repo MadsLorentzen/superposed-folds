@@ -89,16 +89,33 @@ def fig_3d_stack(
             )
         )
 
-    # 3D north arrow (shaft + cone arrowhead) lying on z=0, pointing +Y.
+    # Compute a z-axis range that fits the actual folded layer surfaces
+    # (which can extend well beyond +/-extent for high-amplitude folds)
+    # while staying at least as wide as +/-extent so the drill-core
+    # cylinder, which the user can place anywhere in [-extent, extent]
+    # along z, also fits. The 5% pad keeps surfaces from touching the
+    # box edge. The range is recomputed only when the cached figure is
+    # rebuilt (i.e. when F1/F2 changes); toggling layer-surface
+    # visibility from the app does not retrigger autorange because each
+    # axis has autorange=False.
+    all_z = np.concatenate([z.ravel() for z in z_arrays])
+    z_data_half = float(max(abs(all_z.min()), abs(all_z.max())))
+    z_half = max(z_data_half, extent) * 1.05
+
+    # 3D north arrow (shaft + cone arrowhead), placed at the back-top-left
+    # corner of the scene: x = -extent (lowest X), z near z_half (highest
+    # Z), shaft running in +Y so the tip points toward the highest Y.
     arrow_color = "black"
+    arrow_x = -extent
+    arrow_z = z_half * 0.95
     arrow_shaft_y_start = extent * 0.40
     arrow_shaft_y_end = extent * 0.70
     arrow_size = extent * 0.18
     fig.add_trace(
         go.Scatter3d(
-            x=[0.0, 0.0],
+            x=[arrow_x, arrow_x],
             y=[arrow_shaft_y_start, arrow_shaft_y_end],
-            z=[0.0, 0.0],
+            z=[arrow_z, arrow_z],
             mode="lines",
             line=dict(color=arrow_color, width=10),
             name="north",
@@ -108,9 +125,9 @@ def fig_3d_stack(
     )
     fig.add_trace(
         go.Cone(
-            x=[0.0],
+            x=[arrow_x],
             y=[arrow_shaft_y_end],
-            z=[0.0],
+            z=[arrow_z],
             u=[0.0],
             v=[arrow_size],
             w=[0.0],
@@ -124,19 +141,6 @@ def fig_3d_stack(
             hoverinfo="skip",
         )
     )
-
-    # Compute a z-axis range that fits the actual folded layer surfaces
-    # (which can extend well beyond +/-extent for high-amplitude folds)
-    # while staying at least as wide as +/-extent so the drill-core
-    # cylinder, which the user can place anywhere in [-extent, extent]
-    # along z, also fits. The 5% pad keeps surfaces from touching the
-    # box edge. The range is recomputed only when the cached figure is
-    # rebuilt (i.e. when F1/F2 changes); toggling layer-surface
-    # visibility from the app does not retrigger autorange because each
-    # axis has autorange=False.
-    all_z = np.concatenate([z.ravel() for z in z_arrays])
-    z_data_half = float(max(abs(all_z.min()), abs(all_z.max())))
-    z_half = max(z_data_half, extent) * 1.05
 
     fig.update_layout(
         scene=dict(
@@ -158,9 +162,9 @@ def fig_3d_stack(
             annotations=[
                 dict(
                     showarrow=False,
-                    x=0.0,
+                    x=arrow_x,
                     y=extent * 0.95,
-                    z=0.0,
+                    z=arrow_z,
                     text="<b>N</b>",
                     font=dict(size=20, color="black"),
                     bgcolor="rgba(255, 255, 255, 0.85)",
@@ -295,7 +299,7 @@ def fig_3d_drill_core_trace(
     Z: NDArray[np.floating],
     layer_idx: NDArray[np.integer],
     inside_mask: NDArray[np.bool_] | None = None,
-    fade_opacity: float = 0.05,
+    fade_opacity: float = 0.15,
 ) -> list[go.Surface]:
     """Plotly Surface traces for a drill core embedded in the 3D layer
     stack. Uses the same discrete colorscale as the 2D map and the layer
@@ -385,7 +389,7 @@ def fig_2d_drill_core_unrolled(
     layer_idx: NDArray[np.integer],
     length: float,
     inside_mask: NDArray[np.bool_] | None = None,
-    fade_opacity: float = 0.05,
+    fade_opacity: float = 0.15,
 ) -> go.Figure:
     """Heatmap of the drill core unrolled flat: depth from collar on the
     Y axis (0 at top, increasing downward to `length`), circumferential
