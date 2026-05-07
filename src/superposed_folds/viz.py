@@ -159,6 +159,15 @@ def fig_3d_stack(
             # folds, which is geologically faithful (no vertical
             # exaggeration).
             aspectmode="data",
+            # Explicit scene.uirevision (in addition to the layout-level
+            # one below) so 3D camera/pan/zoom state survives toggling
+            # the drill-core enable and layer-surfaces visibility
+            # checkboxes, which both change the figure's trace list.
+            uirevision="3d-scene-locked",
+            # Pin a default camera so the first render is deterministic
+            # and uirevision has something concrete to preserve when the
+            # user pans or rotates.
+            camera=dict(eye=dict(x=1.4, y=1.4, z=1.0)),
             annotations=[
                 dict(
                     showarrow=False,

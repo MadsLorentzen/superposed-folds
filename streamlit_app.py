@@ -229,21 +229,24 @@ def _interactive_panel() -> None:
             )
         collar_cols = st.columns(3)
         with collar_cols[0]:
-            st.slider("Collar X", -5.0, 5.0, step=0.1, key="collar_x")
+            st.slider("Collar X (km)", -5.0, 5.0, step=0.1, key="collar_x")
         with collar_cols[1]:
-            st.slider("Collar Y", -5.0, 5.0, step=0.1, key="collar_y")
+            st.slider("Collar Y (km)", -5.0, 5.0, step=0.1, key="collar_y")
         with collar_cols[2]:
-            st.slider("Collar Z", -5.0, 5.0, step=0.1, key="collar_z")
+            st.slider("Collar Z (km)", -5.0, 5.0, step=0.1, key="collar_z")
         orient_cols = st.columns(4)
         with orient_cols[0]:
             st.slider("Azimuth (°)", 0.0, 360.0, step=1.0, key="azimuth")
         with orient_cols[1]:
             st.slider("Plunge (°)", 0.0, 90.0, step=1.0, key="plunge")
         with orient_cols[2]:
-            st.slider("Core length", 0.5, 10.0, step=0.1, key="core_length")
+            st.slider(
+                "Core length (km)", 0.5, 10.0, step=0.1, key="core_length"
+            )
         with orient_cols[3]:
             st.slider(
-                "Core diameter", 0.05, 1.5, step=0.05, key="core_diameter"
+                "Core diameter", 0.05, 1.5, step=0.05, key="core_diameter",
+                help="Visualization probe diameter, not a real drill bit size.",
             )
 
     A1 = st.session_state["A1"]
