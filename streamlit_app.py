@@ -86,6 +86,7 @@ if "preset_name" not in st.session_state:
 
 _DRILL_CORE_DEFAULTS: dict[str, float | int | bool] = {
     "drill_core_enabled": False,
+    "show_layer_surfaces": True,
     "collar_x": 0.0,
     "collar_y": 0.0,
     "collar_z": 2.5,
@@ -198,6 +199,15 @@ def _interactive_panel() -> None:
 
     with st.expander("Drill core", expanded=False):
         st.checkbox("Enable drill core", key="drill_core_enabled")
+        st.checkbox(
+            "Show layer surfaces in 3D viewer",
+            key="show_layer_surfaces",
+            help=(
+                "Hide the folded layer surfaces in the 3D viewer to see "
+                "the drill core on its own. Has no effect when the drill "
+                "core is disabled."
+            ),
+        )
         dc_col_a, dc_col_b, dc_col_c = st.columns(3)
         with dc_col_a:
             st.slider("Collar X", -5.0, 5.0, step=0.1, key="collar_x")
@@ -288,9 +298,12 @@ def _interactive_panel() -> None:
         fig_3d = _cached_fig_3d_layers(f1, f2, _VIZ_SOURCE_FINGERPRINT)
         if drill_core_enabled:
             # Shallow-copy the cached figure before mutating, otherwise
-            # add_trace would mutate the cached object and pollute future
-            # cache hits.
+            # add_trace and trace.visible writes would mutate the cached
+            # object and pollute future cache hits.
             fig_3d = go.Figure(fig_3d)
+            if not bool(st.session_state["show_layer_surfaces"]):
+                for trace in fig_3d.data:
+                    trace.visible = False
             fig_3d.add_trace(
                 fig_3d_drill_core_trace(Xc, Yc, Zc, layer_idx_c)
             )
@@ -306,11 +319,15 @@ def _interactive_panel() -> None:
         st.plotly_chart(fig_2d, width="stretch", key="fig2d")
 
     if drill_core_enabled:
-        st.plotly_chart(
-            fig_2d_drill_core_unrolled(layer_idx_c, core.length),
-            width="stretch",
-            key="figunrolled",
-        )
+        # Constrain the unrolled strip to the middle ~50% of page width so
+        # it reads as a vertical column rather than a wide thin band.
+        _, col_unroll, _ = st.columns([1, 2, 1])
+        with col_unroll:
+            st.plotly_chart(
+                fig_2d_drill_core_unrolled(layer_idx_c, core.length),
+                width="stretch",
+                key="figunrolled",
+            )
 
 
 _interactive_panel()
