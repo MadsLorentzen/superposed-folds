@@ -169,6 +169,20 @@ def fig_2d_interference(
         # a default heatmap, otherwise the 2D content sits visibly higher).
         margin=dict(l=10, r=10, t=50, b=10),
         height=420,
+        # Pin the legend inside the plot area at the top right. Without
+        # this, adding drill-core overlay traces would shrink the plot
+        # area to make room for an outside legend and the 2D map would
+        # visually shrink whenever drill core is enabled.
+        legend=dict(
+            yanchor="top",
+            y=0.98,
+            xanchor="right",
+            x=0.98,
+            bgcolor="rgba(255, 255, 255, 0.85)",
+            bordercolor="black",
+            borderwidth=1,
+            font=dict(size=11),
+        ),
         annotations=[
             dict(
                 xref="paper",
