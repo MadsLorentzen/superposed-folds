@@ -88,9 +88,9 @@ def fig_3d_stack(
         )
     fig.update_layout(
         scene=dict(
-            xaxis_title="X (East)",
-            yaxis_title="Y (North)",
-            zaxis_title="Z",
+            xaxis_title="X (East, km)",
+            yaxis_title="Y (North, km)",
+            zaxis_title="Z (km)",
             aspectmode="data",
             annotations=[
                 dict(
@@ -98,8 +98,12 @@ def fig_3d_stack(
                     x=0.0,
                     y=extent,
                     z=0.0,
-                    text="N",
-                    font=dict(size=14, color="black"),
+                    text="<b>N</b>",
+                    font=dict(size=24, color="black"),
+                    bgcolor="rgba(255, 255, 255, 0.85)",
+                    bordercolor="black",
+                    borderwidth=1,
+                    borderpad=4,
                 )
             ],
         ),
@@ -144,8 +148,8 @@ def fig_2d_interference(
         )
     )
     fig.update_layout(
-        xaxis=dict(title="X (East)", scaleanchor="y", scaleratio=1),
-        yaxis=dict(title="Y (North)"),
+        xaxis=dict(title="X (East, km)", scaleanchor="y", scaleratio=1),
+        yaxis=dict(title="Y (North, km)"),
         # Generous top margin so the heatmap aligns vertically with the 3D
         # scene next to it (Plotly's 3D scene reserves more top padding than
         # a default heatmap, otherwise the 2D content sits visibly higher).
@@ -155,11 +159,15 @@ def fig_2d_interference(
             dict(
                 xref="paper",
                 yref="paper",
-                x=0.02,
-                y=0.98,
-                text="↑ N",
+                x=0.05,
+                y=0.95,
+                text="<b>↑ N</b>",
                 showarrow=False,
-                font=dict(size=14, color="black"),
+                font=dict(size=22, color="black"),
+                bgcolor="rgba(255, 255, 255, 0.85)",
+                bordercolor="black",
+                borderwidth=1,
+                borderpad=4,
             )
         ],
     )
@@ -257,9 +265,9 @@ def fig_2d_drill_core_unrolled(
     fig.update_layout(
         xaxis=dict(title="θ around core (°)"),
         # Depth increases downward; reverse the y-axis so the collar is on top.
-        yaxis=dict(title="depth from collar", autorange="reversed"),
+        yaxis=dict(title="depth from collar (km)", autorange="reversed"),
         margin=dict(l=10, r=10, t=30, b=40),
-        height=260,
+        height=520,
     )
     return fig
 
@@ -269,6 +277,9 @@ def drill_core_map_overlay_traces(p: DrillCoreParameters) -> list[go.Scatter]:
     a collar marker, the projected line from collar to toe, and a toe
     marker. For nearly-vertical cores (plunge >= 89 degrees) returns just
     the collar marker (the projected line collapses to a point).
+
+    All traces opt into the legend so the user can identify the black
+    line as the drill plan and the markers as collar/toe.
     """
     az = np.deg2rad(p.azimuth_deg)
     pl = np.deg2rad(p.plunge_deg)
@@ -282,8 +293,8 @@ def drill_core_map_overlay_traces(p: DrillCoreParameters) -> list[go.Scatter]:
         y=[p.collar_y],
         mode="markers",
         marker=dict(size=10, color="black", symbol="circle"),
-        name="collar",
-        showlegend=False,
+        name="drill collar",
+        showlegend=True,
         hoverinfo="skip",
     )
 
@@ -295,8 +306,8 @@ def drill_core_map_overlay_traces(p: DrillCoreParameters) -> list[go.Scatter]:
         y=[p.collar_y, toe_y],
         mode="lines",
         line=dict(color="black", width=2),
-        name="core",
-        showlegend=False,
+        name="drill plan (collar to toe)",
+        showlegend=True,
         hoverinfo="skip",
     )
     toe_marker = go.Scatter(
@@ -304,8 +315,8 @@ def drill_core_map_overlay_traces(p: DrillCoreParameters) -> list[go.Scatter]:
         y=[toe_y],
         mode="markers",
         marker=dict(size=8, color="black", symbol="x"),
-        name="toe",
-        showlegend=False,
+        name="drill toe",
+        showlegend=True,
         hoverinfo="skip",
     )
     return [line, collar_marker, toe_marker]
