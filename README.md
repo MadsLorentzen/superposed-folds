@@ -12,7 +12,10 @@ implementing the plane-strain superposed-folding equations from Ramsay & Lisle
 
 Pick a Grasemann (2004) preset on the left or move the sliders. The 3D fold
 stack, the 2D interference map at z = 0, the stereonet, and the classification
-readout all update together.
+readout all update together. Optionally enable a cylindrical drill core to see
+the same interference pattern intersecting a borehole at any collar position,
+azimuth, and plunge, rendered both embedded in the 3D layer stack and unrolled
+flat as a depth-vs-circumference strip.
 
 ## What's inside
 
@@ -20,7 +23,12 @@ readout all update together.
   - `FoldParameters` and the Ramsay & Lisle plane-strain equations
   - Forward (`apply_superposed_fold`) and inverse (`initial_z_at`) maps
   - All 21 canonical Grasemann (2004) preset configurations
-  - Plotly figure builders: 3D stack, 2D interference map, stereonet
+  - `DrillCoreParameters` and `sample_layers_on_cylinder` for sampling the
+    folded model on the curved surface of a cylindrical borehole at any
+    orientation
+  - Plotly figure builders: 3D fold stack with optional drill-core trace,
+    2D interference map at z = 0 with optional collar/line/toe overlay,
+    stereonet, and an unrolled drill-core section
 - A Streamlit app (`streamlit_app.py`) for the interactive playground.
 - pytest suite with parity checks against the original UCD MATLAB code.
 
@@ -55,4 +63,4 @@ uv run pytest
 
 ## License
 
-MIT — see `LICENSE`.
+MIT. See `LICENSE`.
