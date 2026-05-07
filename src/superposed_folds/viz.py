@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import matplotlib.pyplot as plt
 import mplstereonet  # noqa: F401  (registers 'stereonet' projection with matplotlib)
 import numpy as np
@@ -14,6 +16,9 @@ from .geometry import (
     initial_z_at,
     make_layer_stack,
 )
+
+if TYPE_CHECKING:
+    from .cylinder import DrillCoreParameters
 
 _LAYER_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
 
@@ -83,10 +88,20 @@ def fig_3d_stack(
         )
     fig.update_layout(
         scene=dict(
-            xaxis_title="X",
-            yaxis_title="Y",
+            xaxis_title="X (East)",
+            yaxis_title="Y (North)",
             zaxis_title="Z",
             aspectmode="data",
+            annotations=[
+                dict(
+                    showarrow=False,
+                    x=0.0,
+                    y=extent,
+                    z=0.0,
+                    text="N",
+                    font=dict(size=14, color="black"),
+                )
+            ],
         ),
         margin=dict(l=0, r=0, t=0, b=0),
         height=520,
@@ -129,13 +144,24 @@ def fig_2d_interference(
         )
     )
     fig.update_layout(
-        xaxis=dict(title="X", scaleanchor="y", scaleratio=1),
-        yaxis=dict(title="Y"),
+        xaxis=dict(title="X (East)", scaleanchor="y", scaleratio=1),
+        yaxis=dict(title="Y (North)"),
         # Generous top margin so the heatmap aligns vertically with the 3D
         # scene next to it (Plotly's 3D scene reserves more top padding than
         # a default heatmap, otherwise the 2D content sits visibly higher).
         margin=dict(l=10, r=10, t=50, b=10),
         height=420,
+        annotations=[
+            dict(
+                xref="paper",
+                yref="paper",
+                x=0.02,
+                y=0.98,
+                text="↑ N",
+                showarrow=False,
+                font=dict(size=14, color="black"),
+            )
+        ],
     )
     return fig
 
@@ -173,3 +199,113 @@ def fig_stereonet(f1: FoldParameters, f2: FoldParameters) -> plt.Figure:
     ax.set_azimuth_ticks(range(0, 360, 90), labels=["N", "E", "S", "W"])
     ax.legend(loc="lower center", bbox_to_anchor=(0.5, -0.15), ncol=2, fontsize=8)
     return fig
+
+
+def fig_3d_drill_core_trace(
+    X: NDArray[np.floating],
+    Y: NDArray[np.floating],
+    Z: NDArray[np.floating],
+    layer_idx: NDArray[np.integer],
+) -> go.Surface:
+    """Plotly Surface trace for a drill core embedded in the 3D layer
+    stack. Uses the same discrete colorscale as the 2D map and the layer
+    surfaces, so colors match across all three views.
+
+    Returns the trace, not a Figure. The Streamlit app composes it onto
+    the cached layer-stack figure with `add_trace` so changes to drill-core
+    parameters do not invalidate the layer-surface cache.
+    """
+    n_colors = len(_LAYER_COLORS)
+    return go.Surface(
+        x=X,
+        y=Y,
+        z=Z,
+        surfacecolor=layer_idx,
+        colorscale=_discrete_colorscale(_LAYER_COLORS),
+        cmin=-0.5,
+        cmax=n_colors - 0.5,
+        showscale=False,
+        opacity=1.0,
+        name="drill core",
+    )
+
+
+def fig_2d_drill_core_unrolled(
+    layer_idx: NDArray[np.integer],
+    length: float,
+) -> go.Figure:
+    """Heatmap of the drill core unrolled flat: depth from collar on the
+    Y axis (0 at top, increasing downward to `length`), circumferential
+    angle on the X axis (0 to 360 degrees). Reuses the same `layer_idx`
+    array as the 3D trace, and the same discrete palette.
+    """
+    n_axial, n_circ = layer_idx.shape
+    theta_deg = np.linspace(0.0, 360.0, n_circ)
+    depth = np.linspace(0.0, length, n_axial)
+    n_colors = len(_LAYER_COLORS)
+    fig = go.Figure(
+        data=go.Heatmap(
+            x=theta_deg,
+            y=depth,
+            z=layer_idx,
+            colorscale=_discrete_colorscale(_LAYER_COLORS),
+            zmin=-0.5,
+            zmax=n_colors - 0.5,
+            showscale=False,
+        )
+    )
+    fig.update_layout(
+        xaxis=dict(title="θ around core (°)"),
+        # Depth increases downward; reverse the y-axis so the collar is on top.
+        yaxis=dict(title="depth from collar", autorange="reversed"),
+        margin=dict(l=10, r=10, t=30, b=40),
+        height=260,
+    )
+    return fig
+
+
+def drill_core_map_overlay_traces(p: DrillCoreParameters) -> list[go.Scatter]:
+    """Traces that draw the drill core on the 2D interference map at z=0:
+    a collar marker, the projected line from collar to toe, and a toe
+    marker. For nearly-vertical cores (plunge >= 89 degrees) returns just
+    the collar marker (the projected line collapses to a point).
+    """
+    az = np.deg2rad(p.azimuth_deg)
+    pl = np.deg2rad(p.plunge_deg)
+    trend_x = np.sin(az) * np.cos(pl)
+    trend_y = np.cos(az) * np.cos(pl)
+    toe_x = p.collar_x + p.length * trend_x
+    toe_y = p.collar_y + p.length * trend_y
+
+    collar_marker = go.Scatter(
+        x=[p.collar_x],
+        y=[p.collar_y],
+        mode="markers",
+        marker=dict(size=10, color="black", symbol="circle"),
+        name="collar",
+        showlegend=False,
+        hoverinfo="skip",
+    )
+
+    if p.plunge_deg >= 89.0:
+        return [collar_marker]
+
+    line = go.Scatter(
+        x=[p.collar_x, toe_x],
+        y=[p.collar_y, toe_y],
+        mode="lines",
+        line=dict(color="black", width=2),
+        name="core",
+        showlegend=False,
+        hoverinfo="skip",
+    )
+    toe_marker = go.Scatter(
+        x=[toe_x],
+        y=[toe_y],
+        mode="markers",
+        marker=dict(size=8, color="black", symbol="x"),
+        name="toe",
+        showlegend=False,
+        hoverinfo="skip",
+    )
+    return [line, collar_marker, toe_marker]
