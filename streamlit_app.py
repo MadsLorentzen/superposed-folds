@@ -340,7 +340,11 @@ def _interactive_panel() -> None:
 
     col_3d, col_2d = st.columns([3, 2])
     with col_3d:
-        st.markdown("#### 3D fold model")
+        st.markdown(
+            "<h5 style='text-align: center; margin-bottom: 0.25rem'>"
+            "3D fold model</h5>",
+            unsafe_allow_html=True,
+        )
         fig_3d = _cached_fig_3d_layers(f1, f2, _VIZ_SOURCE_FINGERPRINT)
         if drill_core_enabled:
             # Shallow-copy the cached figure before mutating, otherwise
@@ -376,7 +380,11 @@ def _interactive_panel() -> None:
                 fig_3d.add_trace(core_trace)
         st.plotly_chart(fig_3d, width="stretch", key="fig3d")
     with col_2d:
-        st.markdown("#### Map view: 2D interference pattern (z = 0)")
+        st.markdown(
+            "<h5 style='text-align: center; margin-bottom: 0.25rem'>"
+            "Map view: 2D interference pattern (z = 0)</h5>",
+            unsafe_allow_html=True,
+        )
         fig_2d = _cached_fig_2d_map(
             f1, f2, int(st.session_state["map_resolution"]), _VIZ_SOURCE_FINGERPRINT
         )
@@ -391,7 +399,11 @@ def _interactive_panel() -> None:
         # it reads as a vertical column rather than a wide thin band.
         _, col_unroll, _ = st.columns([1, 2, 1])
         with col_unroll:
-            st.markdown("#### Unrolled drill-core section")
+            st.markdown(
+                "<h5 style='text-align: center; margin-bottom: 0.25rem'>"
+                "Unrolled drill-core section</h5>",
+                unsafe_allow_html=True,
+            )
             st.plotly_chart(
                 fig_2d_drill_core_unrolled(
                     layer_idx_c, core.length, inside_mask=inside_row
