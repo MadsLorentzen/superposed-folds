@@ -17,6 +17,8 @@ the same interference pattern intersecting a borehole at any collar position,
 azimuth, and plunge, rendered both embedded in the 3D layer stack and unrolled
 flat as a depth-vs-circumference strip.
 
+![drill-core demo](assets/streamlit-demo.gif)
+
 ## What's inside
 
 - A small Python library (`superposed_folds`) implementing:
