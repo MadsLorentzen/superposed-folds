@@ -9,7 +9,7 @@ REFERENCES: list[dict[str, str]] = [
     {
         "key": "Schopfer-UCD",
         "label": "Schöpfer, M. — UCD Fault Analysis Group: Superposed Folding Papermodels",
-        "url": "https://www.fault-analysis-group.ucd.ie/SuperPosedFolds/Superposed_PM_Index.html",
+        "url": "https://web.archive.org/web/20230513083527/https://www.fault-analysis-group.ucd.ie/SuperPosedFolds/Superposed_PM_Index.html",
     },
     {
         "key": "Ramsay-1962",
