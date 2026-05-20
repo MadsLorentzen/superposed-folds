@@ -204,6 +204,17 @@ with st.sidebar:
 @st.fragment
 def _interactive_panel() -> None:
     with st.expander("Parameters", expanded=True):
+        st.checkbox(
+            "Show as block diagram (cube)",
+            key="show_block_diagram",
+            help=(
+                "Render the model as a painted cube (Schöpfer "
+                "papermodel style) instead of separate layer "
+                "horizons. Each face shows the deformed layer "
+                "pattern at that slice. The drill core can still "
+                "be enabled and will pass through the cube."
+            ),
+        )
         col_a, col_b, col_c, col_d = st.columns(4)
         with col_a:
             st.slider("F1 amplitude (A1)", 0.0, 6.0, step=0.1, key="A1")
@@ -234,7 +245,7 @@ def _interactive_panel() -> None:
             st.slider("F2 rake (axis pitch, °)", -90.0, 90.0, step=1.0, key="rake2")
 
     with st.expander("Drill core", expanded=False):
-        dc_toggle_a, dc_toggle_b, dc_toggle_c = st.columns(3)
+        dc_toggle_a, dc_toggle_b = st.columns(2)
         with dc_toggle_a:
             st.checkbox(
                 "Enable drill core",
@@ -256,18 +267,6 @@ def _interactive_panel() -> None:
                     "Hide the folded layer surfaces in the 3D viewer to "
                     "see the drill core on its own. Has no effect when "
                     "the drill core is disabled."
-                ),
-            )
-        with dc_toggle_c:
-            st.checkbox(
-                "Show as block diagram (cube)",
-                key="show_block_diagram",
-                help=(
-                    "Show the model as a painted cube (Schöpfer "
-                    "papermodel style) instead of separate layer "
-                    "horizons. Each face shows the deformed layer "
-                    "pattern at that slice. The drill core can still "
-                    "be enabled and will pass through the cube."
                 ),
             )
         collar_cols = st.columns(3)
