@@ -25,6 +25,7 @@ from superposed_folds import (
     drill_core_map_overlay_traces,
     fig_2d_drill_core_unrolled,
     fig_2d_interference,
+    fig_3d_block_diagram,
     fig_3d_drill_core_trace,
     fig_3d_stack,
     fig_stereonet,
@@ -98,6 +99,7 @@ if "preset_name" not in st.session_state:
 _DRILL_CORE_DEFAULTS: dict[str, float | int | bool] = {
     "drill_core_enabled": False,
     "show_layer_surfaces": True,
+    "show_block_diagram": False,
     "collar_x": 0.0,
     "collar_y": 0.0,
     "collar_z": 2.5,
@@ -128,6 +130,13 @@ def _cached_fig_3d_layers(
     f1: FoldParameters, f2: FoldParameters, _viz_fingerprint: str
 ):
     return fig_3d_stack(f1, f2, n_grid=48)
+
+
+@st.cache_data(show_spinner=False, max_entries=128)
+def _cached_fig_3d_block_diagram(
+    f1: FoldParameters, f2: FoldParameters, _viz_fingerprint: str
+):
+    return fig_3d_block_diagram(f1, f2)
 
 
 @st.cache_data(show_spinner=False, max_entries=128)
@@ -225,7 +234,7 @@ def _interactive_panel() -> None:
             st.slider("F2 rake (axis pitch, °)", -90.0, 90.0, step=1.0, key="rake2")
 
     with st.expander("Drill core", expanded=False):
-        dc_toggle_a, dc_toggle_b = st.columns(2)
+        dc_toggle_a, dc_toggle_b, dc_toggle_c = st.columns(3)
         with dc_toggle_a:
             st.checkbox(
                 "Enable drill core",
@@ -242,10 +251,23 @@ def _interactive_panel() -> None:
             st.checkbox(
                 "Show layer surfaces in 3D viewer",
                 key="show_layer_surfaces",
+                disabled=st.session_state.get("show_block_diagram", False),
                 help=(
                     "Hide the folded layer surfaces in the 3D viewer to "
                     "see the drill core on its own. Has no effect when "
                     "the drill core is disabled."
+                ),
+            )
+        with dc_toggle_c:
+            st.checkbox(
+                "Show as block diagram (cube)",
+                key="show_block_diagram",
+                help=(
+                    "Show the model as a painted cube (Schöpfer "
+                    "papermodel style) instead of separate layer "
+                    "horizons. Each face shows the deformed layer "
+                    "pattern at that slice. The drill core can still "
+                    "be enabled and will pass through the cube."
                 ),
             )
         collar_cols = st.columns(3)
@@ -356,20 +378,29 @@ def _interactive_panel() -> None:
             "3D fold model</h5>",
             unsafe_allow_html=True,
         )
-        fig_3d = _cached_fig_3d_layers(f1, f2, _VIZ_SOURCE_FINGERPRINT)
-        if drill_core_enabled:
-            # Shallow-copy the cached figure before mutating, otherwise
-            # add_trace and trace.visible writes would mutate the cached
-            # object and pollute future cache hits.
+        if st.session_state["show_block_diagram"]:
+            fig_3d = _cached_fig_3d_block_diagram(
+                f1, f2, _VIZ_SOURCE_FINGERPRINT
+            )
             fig_3d = go.Figure(fig_3d)
-            if not bool(st.session_state["show_layer_surfaces"]):
-                # Hide only the layer Surface traces; keep the north
-                # arrow (Scatter3d shaft + Cone head) visible. The
-                # drill-core surface is added below and so isn't
-                # affected here.
-                for trace in fig_3d.data:
-                    if isinstance(trace, go.Surface):
-                        trace.visible = False
+            # No layer-surface visibility handling: the cube IS the
+            # layer rendering when this branch is active.
+        else:
+            fig_3d = _cached_fig_3d_layers(f1, f2, _VIZ_SOURCE_FINGERPRINT)
+            if drill_core_enabled:
+                # Shallow-copy the cached figure before mutating, otherwise
+                # add_trace and trace.visible writes would mutate the cached
+                # object and pollute future cache hits.
+                fig_3d = go.Figure(fig_3d)
+                if not bool(st.session_state["show_layer_surfaces"]):
+                    # Hide only the layer Surface traces; keep the north
+                    # arrow (Scatter3d shaft + Cone head) visible. The
+                    # drill-core surface is added below and so isn't
+                    # affected here.
+                    for trace in fig_3d.data:
+                        if isinstance(trace, go.Surface):
+                            trace.visible = False
+        if drill_core_enabled:
             # A cylinder vertex is "in the original layer stack" iff its
             # initial-z value rounds to one of the n_layers bin centers
             # (i.e. its raw layer index falls in [0, n_layers-1] before the
