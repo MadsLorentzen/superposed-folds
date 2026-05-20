@@ -6,8 +6,8 @@ import math
 import numpy as np
 
 from superposed_folds.geometry import FoldParameters, make_layer_stack
-from superposed_folds.layers import LAYER_COLORS, layer_index_from_z
-from superposed_folds.viz import fig_3d_stack
+from superposed_folds.layers import LAYER_COLORS, N_LAYERS, layer_index_from_z
+from superposed_folds.viz import fig_3d_block_diagram, fig_3d_stack
 
 
 def test_layer_index_from_z_periodic_wrap():
@@ -82,3 +82,97 @@ def test_fig_3d_stack_unused_math_default_matches_two_pi():
     test next to the auto-scaler so we notice if the default ever drifts."""
     f = FoldParameters(A=1.0, B=1.0, dip_dir=0.0, dip=90.0, rake=0.0)
     assert f.wavelength == 2 * math.pi
+
+
+def _block_surface_traces(fig):
+    """Pull only the Surface traces (cube faces), excluding any
+    Scatter3d / Cone traces from the orientation cues."""
+    return [t for t in fig.data if type(t).__name__ == "Surface"]
+
+
+def test_fig_3d_block_diagram_has_six_faces():
+    """Cube view returns exactly six Surface traces (one per face)."""
+    f = FoldParameters(A=2.0, B=1.0, dip_dir=0.0, dip=90.0, rake=0.0)
+    fig = fig_3d_block_diagram(f, f, n_face_grid=64, extent=5.0)
+    surfaces = _block_surface_traces(fig)
+    assert len(surfaces) == 6, f"expected 6 cube faces, got {len(surfaces)}"
+
+
+def test_fig_3d_block_diagram_face_planes():
+    """Each face sits at the correct cube plane: one coordinate constant,
+    the other two spanning their full ranges."""
+    f = FoldParameters(A=2.0, B=1.0, dip_dir=0.0, dip=90.0, rake=0.0)
+    extent = 5.0
+    z_half = extent / 2.0
+    fig = fig_3d_block_diagram(f, f, n_face_grid=32, extent=extent)
+    surfaces = _block_surface_traces(fig)
+
+    found = set()
+    for s in surfaces:
+        X, Y, Z = np.asarray(s.x), np.asarray(s.y), np.asarray(s.z)
+        if np.allclose(X, X.flat[0]):
+            found.add(("x", float(X.flat[0])))
+        elif np.allclose(Y, Y.flat[0]):
+            found.add(("y", float(Y.flat[0])))
+        elif np.allclose(Z, Z.flat[0]):
+            found.add(("z", float(Z.flat[0])))
+
+    expected = {
+        ("x", -extent), ("x", extent),
+        ("y", -extent), ("y", extent),
+        ("z", -z_half), ("z", z_half),
+    }
+    assert found == expected, f"face planes {found!r} != expected {expected!r}"
+
+
+def test_fig_3d_block_diagram_uses_layer_color_scale():
+    """All cube faces share the same discrete LAYER_COLORS colorscale and
+    the cmin/cmax span the full layer-index range."""
+    f = FoldParameters(A=2.0, B=1.0, dip_dir=0.0, dip=90.0, rake=0.0)
+    fig = fig_3d_block_diagram(f, f, n_face_grid=32, extent=5.0)
+    for s in _block_surface_traces(fig):
+        unique_colors = []
+        for _stop, color in s.colorscale:
+            if color not in unique_colors:
+                unique_colors.append(color)
+        assert unique_colors == LAYER_COLORS, (
+            f"face colorscale colors {unique_colors!r} != {LAYER_COLORS!r}"
+        )
+        assert s.cmin == -0.5
+        assert s.cmax == N_LAYERS - 0.5
+
+
+def test_fig_3d_block_diagram_layer_indices_in_range():
+    """surfacecolor on every face is integer-valued and in [0, N_LAYERS)."""
+    f = FoldParameters(A=2.0, B=1.0, dip_dir=0.0, dip=90.0, rake=0.0)
+    fig = fig_3d_block_diagram(f, f, n_face_grid=32, extent=5.0)
+    for s in _block_surface_traces(fig):
+        sc = np.asarray(s.surfacecolor)
+        assert sc.dtype.kind in ("i", "u"), f"non-integer surfacecolor on {s.name}"
+        assert sc.min() >= 0
+        assert sc.max() < N_LAYERS
+
+
+def test_fig_3d_block_diagram_short_wavelength_auto_scales():
+    """At lambda=1.0 with extent=5.0, the auto-scaler should push the
+    per-face grid above the caller's requested 48 (same formula as
+    fig_3d_stack: ceil(16 * extent / lam_min) = ceil(80) = 80)."""
+    f = FoldParameters(
+        A=2.0, B=1.0, dip_dir=0.0, dip=90.0, rake=0.0, wavelength=1.0
+    )
+    fig = fig_3d_block_diagram(f, f, n_face_grid=48, extent=5.0)
+    n_rows, n_cols = np.asarray(_block_surface_traces(fig)[0].surfacecolor).shape
+    assert n_rows >= 80 and n_cols >= 80, (
+        f"expected per-face grid >= 80 at lambda=1.0, got ({n_rows}, {n_cols})"
+    )
+
+
+def test_fig_3d_block_diagram_caps_grid_at_256():
+    """At a pathologically small lambda the auto-scaler caps n_face_grid
+    at 256 to keep the browser-side render responsive."""
+    f = FoldParameters(
+        A=2.0, B=1.0, dip_dir=0.0, dip=90.0, rake=0.0, wavelength=0.1
+    )
+    fig = fig_3d_block_diagram(f, f, n_face_grid=48, extent=5.0)
+    n_rows, n_cols = np.asarray(_block_surface_traces(fig)[0].surfacecolor).shape
+    assert n_rows == 256 and n_cols == 256

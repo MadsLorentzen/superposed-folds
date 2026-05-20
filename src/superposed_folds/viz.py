@@ -507,3 +507,140 @@ def drill_core_map_overlay_traces(p: DrillCoreParameters) -> list[go.Scatter]:
         hoverinfo="skip",
     )
     return [line, collar_marker, toe_marker]
+
+
+def fig_3d_block_diagram(
+    f1: FoldParameters,
+    f2: FoldParameters,
+    *,
+    n_face_grid: int = 200,
+    extent: float = 5.0,
+) -> go.Figure:
+    """Render the model domain as a painted cube (Schöpfer papermodel
+    block diagram).
+
+    Six Surface traces are returned, one per cube face. The cube spans
+    x in [-extent, +extent], y in [-extent, +extent],
+    z in [-extent/2, +extent/2]. Per-face cells are colored by
+    `layer_index_from_z(initial_z_at(...))`, reusing the LAYER_COLORS
+    palette so cube faces, 2D map, 3D stack, and unrolled drill core
+    share one color contract.
+
+    Auto-scales `n_face_grid` upward when either fold's wavelength is
+    short (same formula as `fig_3d_stack`), capped at 256.
+    """
+    z_half = extent / 2.0
+
+    lam_min = min(f1.wavelength, f2.wavelength)
+    auto_n = int(np.ceil(16.0 * extent / lam_min))
+    effective_n_grid = min(max(n_face_grid, auto_n), 256)
+
+    span_xy = np.linspace(-extent, extent, effective_n_grid)
+    span_z = np.linspace(-z_half, z_half, effective_n_grid)
+
+    X_xy, Y_xy = np.meshgrid(span_xy, span_xy, indexing="xy")
+    X_xz, Z_xz = np.meshgrid(span_xy, span_z, indexing="xy")
+    Y_yz, Z_yz = np.meshgrid(span_xy, span_z, indexing="xy")
+
+    faces = [
+        ("top",    X_xy, Y_xy, np.full_like(X_xy, z_half)),
+        ("bottom", X_xy, Y_xy, np.full_like(X_xy, -z_half)),
+        ("north",  X_xz, np.full_like(X_xz, extent),  Z_xz),
+        ("south",  X_xz, np.full_like(X_xz, -extent), Z_xz),
+        ("east",   np.full_like(Y_yz, extent),  Y_yz, Z_yz),
+        ("west",   np.full_like(Y_yz, -extent), Y_yz, Z_yz),
+    ]
+
+    colorscale = _discrete_colorscale(LAYER_COLORS)
+    fig = go.Figure()
+    for name, X, Y, Z in faces:
+        Z0 = initial_z_at(X, Y, Z, f1, f2)
+        layer_index = layer_index_from_z(Z0, N_LAYERS, extent)
+        fig.add_trace(
+            go.Surface(
+                x=X,
+                y=Y,
+                z=Z,
+                surfacecolor=layer_index,
+                colorscale=colorscale,
+                cmin=-0.5,
+                cmax=N_LAYERS - 0.5,
+                opacity=0.85,
+                showscale=False,
+                name=f"face {name}",
+            )
+        )
+
+    arrow_color = "black"
+    arrow_x = -extent
+    arrow_z = z_half * 0.95
+    arrow_shaft_y_start = extent * 0.40
+    arrow_shaft_y_end = extent * 0.70
+    arrow_size = extent * 0.18
+    fig.add_trace(
+        go.Scatter3d(
+            x=[arrow_x, arrow_x],
+            y=[arrow_shaft_y_start, arrow_shaft_y_end],
+            z=[arrow_z, arrow_z],
+            mode="lines",
+            line=dict(color=arrow_color, width=10),
+            name="north",
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+    fig.add_trace(
+        go.Cone(
+            x=[arrow_x],
+            y=[arrow_shaft_y_end],
+            z=[arrow_z],
+            u=[0.0],
+            v=[arrow_size],
+            w=[0.0],
+            sizemode="absolute",
+            sizeref=arrow_size,
+            anchor="tail",
+            showscale=False,
+            colorscale=[[0, arrow_color], [1, arrow_color]],
+            name="north",
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+
+    scene_z_half = max(z_half, extent) * 1.05
+
+    fig.update_layout(
+        scene=dict(
+            xaxis=dict(
+                title="X (East, km)", range=[-extent, extent], autorange=False
+            ),
+            yaxis=dict(
+                title="Y (North, km)", range=[-extent, extent], autorange=False
+            ),
+            zaxis=dict(
+                title="Z (km)", range=[-scene_z_half, scene_z_half], autorange=False
+            ),
+            aspectmode="data",
+            uirevision="3d-scene-locked",
+            camera=dict(eye=dict(x=1.4, y=1.4, z=1.0)),
+            annotations=[
+                dict(
+                    showarrow=False,
+                    x=arrow_x,
+                    y=extent * 0.95,
+                    z=arrow_z,
+                    text="<b>N</b>",
+                    font=dict(size=20, color="black"),
+                    bgcolor="rgba(255, 255, 255, 0.85)",
+                    bordercolor="black",
+                    borderwidth=1,
+                    borderpad=3,
+                )
+            ],
+        ),
+        margin=dict(l=0, r=0, t=0, b=0),
+        height=520,
+        uirevision="3d-scene-locked",
+    )
+    return fig
