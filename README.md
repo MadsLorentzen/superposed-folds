@@ -30,7 +30,9 @@ flat as a depth-vs-circumference strip.
     orientation
   - Plotly figure builders: 3D fold stack with optional drill-core trace,
     2D interference map at z = 0 with optional collar/line/toe overlay,
-    stereonet, and an unrolled drill-core section
+    stereonet, an unrolled drill-core section, and a painted-cube block
+    diagram (Schöpfer papermodel style) that paints the deformed layer
+    pattern on each face of the ±5 km model domain
 - A Streamlit app (`streamlit_app.py`) for the interactive playground.
 - pytest suite with parity checks against the original UCD MATLAB code.
 
