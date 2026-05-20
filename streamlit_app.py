@@ -385,6 +385,15 @@ def _interactive_panel() -> None:
             fig_3d = go.Figure(fig_3d)
             # No layer-surface visibility handling: the cube IS the
             # layer rendering when this branch is active.
+            #
+            # Cube faces default to opacity=0.85 so an enabled drill core
+            # remains visible through the front face. When the drill core
+            # is disabled there is nothing inside to reveal, so promote
+            # the faces to fully opaque for the crisper paper-model look.
+            if not drill_core_enabled:
+                for trace in fig_3d.data:
+                    if isinstance(trace, go.Surface):
+                        trace.opacity = 1.0
         else:
             fig_3d = _cached_fig_3d_layers(f1, f2, _VIZ_SOURCE_FINGERPRINT)
             if drill_core_enabled:
