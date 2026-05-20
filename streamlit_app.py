@@ -204,17 +204,33 @@ with st.sidebar:
 @st.fragment
 def _interactive_panel() -> None:
     with st.expander("Parameters", expanded=True):
-        st.checkbox(
-            "Show as block diagram (cube)",
-            key="show_block_diagram",
-            help=(
-                "Render the model as a painted cube (Schöpfer "
-                "papermodel style) instead of separate layer "
-                "horizons. Each face shows the deformed layer "
-                "pattern at that slice. The drill core can still "
-                "be enabled and will pass through the cube."
-            ),
-        )
+        view_a, view_b = st.columns(2)
+        with view_a:
+            st.checkbox(
+                "Show as block diagram (cube)",
+                key="show_block_diagram",
+                help=(
+                    "Render the model as a painted cube (Schöpfer "
+                    "papermodel style) instead of separate layer "
+                    "horizons. Each face shows the deformed layer "
+                    "pattern at that slice. The drill core can still "
+                    "be enabled and will pass through the cube."
+                ),
+            )
+        with view_b:
+            st.checkbox(
+                "Show layer surfaces in 3D viewer",
+                key="show_layer_surfaces",
+                disabled=st.session_state.get("show_block_diagram", False),
+                help=(
+                    "Render the discrete folded layer horizons in the "
+                    "3D viewer. Uncheck to clear the 3D viewer of layer "
+                    "surfaces - useful when you only want to see the "
+                    "drill core on its own. Disabled while the block-"
+                    "diagram cube view is active (the cube replaces "
+                    "the layer horizons)."
+                ),
+            )
         col_a, col_b, col_c, col_d = st.columns(4)
         with col_a:
             st.slider("F1 amplitude (A1)", 0.0, 6.0, step=0.1, key="A1")
@@ -245,30 +261,17 @@ def _interactive_panel() -> None:
             st.slider("F2 rake (axis pitch, °)", -90.0, 90.0, step=1.0, key="rake2")
 
     with st.expander("Drill core", expanded=False):
-        dc_toggle_a, dc_toggle_b = st.columns(2)
-        with dc_toggle_a:
-            st.checkbox(
-                "Enable drill core",
-                key="drill_core_enabled",
-                help=(
-                    "The cylinder samples the layered fold model anywhere "
-                    "you place it. Parts that lie above or below the "
-                    "visualized horizons are rendered at reduced opacity "
-                    "to flag they are showing the model's periodic "
-                    "continuation rather than crossing a drawn surface."
-                ),
-            )
-        with dc_toggle_b:
-            st.checkbox(
-                "Show layer surfaces in 3D viewer",
-                key="show_layer_surfaces",
-                disabled=st.session_state.get("show_block_diagram", False),
-                help=(
-                    "Hide the folded layer surfaces in the 3D viewer to "
-                    "see the drill core on its own. Has no effect when "
-                    "the drill core is disabled."
-                ),
-            )
+        st.checkbox(
+            "Enable drill core",
+            key="drill_core_enabled",
+            help=(
+                "The cylinder samples the layered fold model anywhere "
+                "you place it. Parts that lie above or below the "
+                "visualized horizons are rendered at reduced opacity "
+                "to flag they are showing the model's periodic "
+                "continuation rather than crossing a drawn surface."
+            ),
+        )
         collar_cols = st.columns(3)
         with collar_cols[0]:
             st.slider("Collar X (km)", -5.0, 5.0, step=0.1, key="collar_x")
@@ -395,19 +398,18 @@ def _interactive_panel() -> None:
                         trace.opacity = 1.0
         else:
             fig_3d = _cached_fig_3d_layers(f1, f2, _VIZ_SOURCE_FINGERPRINT)
-            if drill_core_enabled:
-                # Shallow-copy the cached figure before mutating, otherwise
-                # add_trace and trace.visible writes would mutate the cached
-                # object and pollute future cache hits.
-                fig_3d = go.Figure(fig_3d)
-                if not bool(st.session_state["show_layer_surfaces"]):
-                    # Hide only the layer Surface traces; keep the north
-                    # arrow (Scatter3d shaft + Cone head) visible. The
-                    # drill-core surface is added below and so isn't
-                    # affected here.
-                    for trace in fig_3d.data:
-                        if isinstance(trace, go.Surface):
-                            trace.visible = False
+            # Shallow-copy the cached figure before mutating, otherwise
+            # add_trace and trace.visible writes would mutate the cached
+            # object and pollute future cache hits.
+            fig_3d = go.Figure(fig_3d)
+            if not bool(st.session_state["show_layer_surfaces"]):
+                # Hide only the layer Surface traces; keep the north
+                # arrow (Scatter3d shaft + Cone head) visible. The
+                # drill-core surface, if any, is added below and so
+                # isn't affected here.
+                for trace in fig_3d.data:
+                    if isinstance(trace, go.Surface):
+                        trace.visible = False
         if drill_core_enabled:
             if st.session_state["show_block_diagram"]:
                 # Cube view already paints the periodic continuation
