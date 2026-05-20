@@ -45,11 +45,21 @@ def fig_3d_stack(
     n_grid: int = 64,
     extent: float = 5.0,
 ) -> go.Figure:
-    """Render the 3D superposed-fold stack as `n_layers` colored surfaces."""
+    """Render the 3D superposed-fold stack as `n_layers` colored surfaces.
+
+    Auto-scales `n_grid` up when either fold's wavelength is short enough
+    that the requested grid would alias (we aim for at least 8 grid points
+    per pre-fold wavelength across the 2*extent span). Capped at 256 to
+    keep the browser-side render responsive.
+    """
+    lam_min = min(f1.wavelength, f2.wavelength)
+    auto_n_grid = int(np.ceil(16.0 * extent / lam_min))
+    effective_n_grid = min(max(n_grid, auto_n_grid), 256)
+
     fig = go.Figure()
     z_arrays: list[NDArray[np.floating]] = []
     for (X0, Y0, Z0), color in zip(
-        make_layer_stack(n_layers=n_layers, extent=extent, n_grid=n_grid),
+        make_layer_stack(n_layers=n_layers, extent=extent, n_grid=effective_n_grid),
         LAYER_COLORS,
         strict=False,
     ):

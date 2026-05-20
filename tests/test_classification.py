@@ -73,3 +73,22 @@ def test_classify_nearest_returns_none_when_far():
     far_f1 = FoldParameters(A=99.0, B=7.7, dip_dir=11.0, dip=22.0, rake=33.0)
     far_f2 = FoldParameters(A=99.0, B=7.7, dip_dir=44.0, dip=55.0, rake=66.0)
     assert classify_nearest(far_f1, far_f2, tol=1e-3) is None
+
+
+def test_classify_nearest_ignores_wavelength():
+    """Changing the wavelength away from the default should not snap the
+    user off their active Grasemann preset: wavelength controls scale, not
+    interference-pattern type."""
+    for preset in ALL_PRESETS:
+        f1_custom = FoldParameters(
+            A=preset.f1.A, B=preset.f1.B,
+            dip_dir=preset.f1.dip_dir, dip=preset.f1.dip, rake=preset.f1.rake,
+            C=preset.f1.C, wavelength=1.0,
+        )
+        f2_custom = FoldParameters(
+            A=preset.f2.A, B=preset.f2.B,
+            dip_dir=preset.f2.dip_dir, dip=preset.f2.dip, rake=preset.f2.rake,
+            C=preset.f2.C, wavelength=3.7,
+        )
+        match = classify_nearest(f1_custom, f2_custom, tol=1e-6)
+        assert match is not None and match.id == preset.id

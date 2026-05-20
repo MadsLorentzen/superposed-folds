@@ -183,7 +183,13 @@ def _params_distance(a: FoldParameters, b: FoldParameters) -> float:
     differences are kept *unscaled* on purpose: with the default `tol=0.05`
     in the app, this means any meaningful slider nudge on amplitude or
     stretch produces "Custom" rather than snapping to a preset. That is the
-    intended UX — moving a slider should move the user out of the preset.
+    intended UX - moving a slider should move the user out of the preset.
+
+    `wavelength` is intentionally excluded: the Grasemann (2004) presets
+    classify interference-pattern *types*, which are scale-invariant.
+    Changing wavelength changes the scale at which the pattern is rendered,
+    not which Grasemann type it is, so the user can drag the wavelength
+    sliders without snapping off the active preset.
     """
     return float(
         (a.A - b.A) ** 2

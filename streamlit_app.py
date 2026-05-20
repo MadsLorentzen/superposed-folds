@@ -76,8 +76,14 @@ def _set_sliders_from_preset(preset_name: str) -> None:
     p = _PRESET_BY_NAME[preset_name]
     st.session_state["A1"] = p.f1.A
     st.session_state["B1"] = p.f1.B
+    # Slider step is 0.1 km. The preset wavelength is exactly 2π (the UCD
+    # MATLAB default), so we snap to a step-aligned value here. The 0.27%
+    # difference between 2π and 6.3 is below visual precision; MATLAB parity
+    # still holds because the dataclass default stays 2π for unit tests.
+    st.session_state["lambda1"] = round(p.f1.wavelength, 1)
     st.session_state["A2"] = p.f2.A
     st.session_state["B2"] = p.f2.B
+    st.session_state["lambda2"] = round(p.f2.wavelength, 1)
     st.session_state["dipdir2"] = p.f2.dip_dir
     st.session_state["dip2"] = p.f2.dip
     st.session_state["rake2"] = p.f2.rake
@@ -193,9 +199,25 @@ def _interactive_panel() -> None:
         with col_a:
             st.slider("F1 amplitude (A1)", 0.0, 6.0, step=0.1, key="A1")
             st.slider("F1 stretch (B1)", 0.5, 2.0, step=0.05, key="B1")
+            st.slider(
+                "F1 wavelength (λ1)", 0.5, 20.0, step=0.1, key="lambda1",
+                help=(
+                    "Pre-fold wavelength of F1 in the same length units as "
+                    "the model extent (~5 km). Default ≈ 2π preserves the "
+                    "UCD MATLAB behavior. Shorten λ to see multiple periods "
+                    "inside the drill core."
+                ),
+            )
         with col_b:
             st.slider("F2 amplitude (A2)", 0.0, 6.0, step=0.1, key="A2")
             st.slider("F2 stretch (B2)", 0.5, 2.0, step=0.05, key="B2")
+            st.slider(
+                "F2 wavelength (λ2)", 0.5, 20.0, step=0.1, key="lambda2",
+                help=(
+                    "Pre-fold wavelength of F2. Combine with a different λ1 "
+                    "to build refold patterns with contrasting scales."
+                ),
+            )
         with col_c:
             st.slider("F2 dip direction (°)", 0.0, 360.0, step=1.0, key="dipdir2")
             st.slider("F2 axial-plane dip (°)", 0.0, 90.0, step=1.0, key="dip2")
@@ -250,14 +272,20 @@ def _interactive_panel() -> None:
 
     A1 = st.session_state["A1"]
     B1 = st.session_state["B1"]
+    lambda1 = st.session_state["lambda1"]
     A2 = st.session_state["A2"]
     B2 = st.session_state["B2"]
+    lambda2 = st.session_state["lambda2"]
     dipdir2 = st.session_state["dipdir2"]
     dip2 = st.session_state["dip2"]
     rake2 = st.session_state["rake2"]
 
-    f1 = FoldParameters(A=A1, B=B1, dip_dir=0.0, dip=90.0, rake=0.0)
-    f2 = FoldParameters(A=A2, B=B2, dip_dir=dipdir2, dip=dip2, rake=rake2)
+    f1 = FoldParameters(
+        A=A1, B=B1, dip_dir=0.0, dip=90.0, rake=0.0, wavelength=lambda1
+    )
+    f2 = FoldParameters(
+        A=A2, B=B2, dip_dir=dipdir2, dip=dip2, rake=rake2, wavelength=lambda2
+    )
 
     drill_core_enabled = bool(st.session_state["drill_core_enabled"])
     if drill_core_enabled:

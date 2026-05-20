@@ -116,6 +116,51 @@ def test_apply_superposed_is_non_commutative():
     assert diff > 1e-3
 
 
+def test_apply_fold_default_wavelength_matches_legacy_sin_y():
+    """Default wavelength is 2π, so apply_fold reproduces the original
+    sin(Y) formula bit-for-bit. This pins MATLAB parity behavior."""
+    p = FoldParameters(A=2.5, B=1.2, dip_dir=0.0, dip=90.0, rake=0.0)
+    X = np.linspace(-3.0, 3.0, 17)
+    Y = np.linspace(-3.0, 3.0, 17)
+    Z = np.linspace(-1.0, 1.0, 17)
+    _Xf, _Yf, Zf = apply_fold(X, Y, Z, p)
+    legacy_Zf = p.A * p.B * np.sin(Y) + p.B * Z
+    np.testing.assert_allclose(Zf, legacy_Zf, rtol=0, atol=1e-15)
+
+
+def test_apply_fold_wavelength_scales_sine_period():
+    """At λ=1.0, the sine has period 1.0 in pre-fold Y, so apply_fold output
+    repeats every 1.0 in Y."""
+    p = FoldParameters(
+        A=2.0, B=1.0, dip_dir=0.0, dip=90.0, rake=0.0, wavelength=1.0
+    )
+    Y = np.array([0.0, 1.0, 2.0, 3.0])
+    X = np.zeros_like(Y)
+    Z = np.zeros_like(Y)
+    _Xf, _Yf, Zf = apply_fold(X, Y, Z, p)
+    # sin(2π * Y / 1.0) at Y = 0, 1, 2, 3 is all zero (period 1.0).
+    np.testing.assert_allclose(Zf, np.zeros_like(Y), atol=1e-12)
+
+
+def test_forward_inverse_round_trip_with_custom_wavelength():
+    """Inverse map undoes forward map exactly when both use the same
+    non-default wavelength."""
+    f1 = FoldParameters(
+        A=1.5, B=1.0, dip_dir=0.0, dip=90.0, rake=0.0, wavelength=1.5
+    )
+    f2 = FoldParameters(
+        A=2.0, B=1.0, dip_dir=45.0, dip=70.0, rake=10.0, wavelength=2.5
+    )
+    rng = np.random.default_rng(0)
+    X = rng.uniform(-2.0, 2.0, size=64)
+    Y = rng.uniform(-2.0, 2.0, size=64)
+    Z = rng.uniform(-0.5, 0.5, size=64)
+
+    Xf, Yf, Zf = apply_superposed_fold(X, Y, Z, f1, f2)
+    Z_back = initial_z_at(Xf, Yf, Zf, f1, f2)
+    np.testing.assert_allclose(Z_back, Z, atol=1e-9)
+
+
 def test_make_layer_stack_shape_and_extent():
     layers = make_layer_stack(n_layers=3, extent=5.0, n_grid=16)
     # Three layers, each (16, 16, 3)-shaped grid

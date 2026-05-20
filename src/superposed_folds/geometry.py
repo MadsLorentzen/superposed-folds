@@ -19,6 +19,9 @@ class FoldParameters:
     (defaults to 1/B for constant-volume deformation).
     `dip_dir`, `dip`, `rake` orient the fold's axial plane and fold axis in
     degrees, following the convention used by Schöpfer's UCD MATLAB script.
+    `wavelength` is the pre-fold wavelength of the sinusoidal fold (default
+    2π preserves Schöpfer's UCD MATLAB behavior, where `sin(Y)` has period
+    2π in pre-fold Y units).
     """
 
     A: float
@@ -27,6 +30,7 @@ class FoldParameters:
     dip: float
     rake: float
     C: float | None = None
+    wavelength: float = 2 * np.pi
 
     def __post_init__(self) -> None:
         if self.C is None:
@@ -47,14 +51,14 @@ def apply_fold(
 
         x_f = X
         y_f = C * Y
-        z_f = A * B * sin(Y) + B * Z
+        z_f = A * B * sin(2π Y / λ) + B * Z
 
     Operates element-wise; orientation parameters on `p` are unused here
     (orientation handling lives in `apply_superposed_fold`).
     """
     Xf = X
     Yf = p.C * Y
-    Zf = p.A * p.B * np.sin(Y) + p.B * Z
+    Zf = p.A * p.B * np.sin(2.0 * np.pi * Y / p.wavelength) + p.B * Z
     return Xf, Yf, Zf
 
 
@@ -82,9 +86,9 @@ def initial_z_at(
     # Rotate into F2 reference frame
     x, y, z = rotate_xyz(X, Y, Z, bx, by, bz)
 
-    # Undo F2 fold:  y_pre = y / C2;  z_pre = (z - A2*B2*sin(y_pre)) / B2
+    # Undo F2 fold:  y_pre = y / C2;  z_pre = (z - A2*B2*sin(2π y_pre / λ2)) / B2
     y_pre = y / f2.C
-    z_pre = (z - f2.A * f2.B * np.sin(y_pre)) / f2.B
+    z_pre = (z - f2.A * f2.B * np.sin(2.0 * np.pi * y_pre / f2.wavelength)) / f2.B
 
     # Undo F2's frame rotation (back to world coordinates).
     x, y, z = rotate_xyz(x, y_pre, z_pre, bx, by, bz, inverse=True)
@@ -93,7 +97,7 @@ def initial_z_at(
 
     # Undo F1 fold
     y_pre = y / f1.C
-    z_pre = (z - f1.A * f1.B * np.sin(y_pre)) / f1.B
+    z_pre = (z - f1.A * f1.B * np.sin(2.0 * np.pi * y_pre / f1.wavelength)) / f1.B
 
     return z_pre
 
