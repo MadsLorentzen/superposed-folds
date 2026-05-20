@@ -1,6 +1,6 @@
 [project]
 name = "superposed-folds"
-version = "0.1.0.dev0"
+version = "0.2.0.dev0"
 description = "Interactive Python toolkit for visualizing superposed folds (Ramsay & Lisle 2000; Grasemann et al. 2004)."
 readme = "README.md"
 requires-python = ">=3.12"
