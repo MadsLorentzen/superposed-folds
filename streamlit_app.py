@@ -410,22 +410,32 @@ def _interactive_panel() -> None:
                         if isinstance(trace, go.Surface):
                             trace.visible = False
         if drill_core_enabled:
-            # A cylinder vertex is "in the original layer stack" iff its
-            # initial-z value rounds to one of the n_layers bin centers
-            # (i.e. its raw layer index falls in [0, n_layers-1] before the
-            # mod-wrap). That range corresponds to Z0 within
-            # [-extent/2 - spacing/2, extent/2 + spacing/2]. Outside this
-            # band, the cylinder is sampling the model's periodic
-            # continuation; fade it.
-            n_layers = N_LAYERS
-            extent = 5.0
-            spacing = extent / (n_layers - 1) if n_layers > 1 else extent
-            half_band = extent / 2.0 + spacing / 2.0
-            in_stack_per_vertex = (Z0c >= -half_band) & (Z0c <= half_band)
-            # 3D Surface only supports per-trace opacity, so collapse the
-            # per-vertex mask to a per-row decision (majority vote across
-            # theta) for the 3D split.
-            inside_row = in_stack_per_vertex.mean(axis=1) >= 0.5
+            if st.session_state["show_block_diagram"]:
+                # Cube view already paints the periodic continuation
+                # across its entire +/-5 km domain, so the drill core
+                # inside it should match: no fade. Fading would imply
+                # those parts are less real than what the cube has
+                # already shown to be one coherent periodic medium.
+                in_stack_per_vertex = None
+                inside_row = None
+            else:
+                # A cylinder vertex is "in the original layer stack" iff
+                # its initial-z value rounds to one of the n_layers bin
+                # centers (i.e. its raw layer index falls in
+                # [0, n_layers-1] before the mod-wrap). That range
+                # corresponds to Z0 within
+                # [-extent/2 - spacing/2, extent/2 + spacing/2]. Outside
+                # this band, the cylinder is sampling the model's
+                # periodic continuation; fade it.
+                n_layers = N_LAYERS
+                extent = 5.0
+                spacing = extent / (n_layers - 1) if n_layers > 1 else extent
+                half_band = extent / 2.0 + spacing / 2.0
+                in_stack_per_vertex = (Z0c >= -half_band) & (Z0c <= half_band)
+                # 3D Surface only supports per-trace opacity, so collapse
+                # the per-vertex mask to a per-row decision (majority
+                # vote across theta) for the 3D split.
+                inside_row = in_stack_per_vertex.mean(axis=1) >= 0.5
             for core_trace in fig_3d_drill_core_trace(
                 Xc, Yc, Zc, layer_idx_c, inside_mask=inside_row
             ):
