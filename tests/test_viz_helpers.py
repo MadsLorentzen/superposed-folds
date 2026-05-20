@@ -4,12 +4,12 @@ unrolled drill-core view."""
 import numpy as np
 
 from superposed_folds.geometry import make_layer_stack
-from superposed_folds.viz import _LAYER_COLORS, layer_index_from_z
+from superposed_folds.layers import LAYER_COLORS, layer_index_from_z
 
 
 def test_layer_index_from_z_periodic_wrap():
     """Z values that span multiple periods of the layer stack all wrap into
-    [0, len(_LAYER_COLORS))."""
+    [0, len(LAYER_COLORS))."""
     n_layers = 5
     extent = 5.0
     # Bin centers at z = -2.5, -1.25, 0.0, 1.25, 2.5; spacing = 1.25.
@@ -17,7 +17,7 @@ def test_layer_index_from_z_periodic_wrap():
     z = np.array([-2.5, 0.0, 2.5, 3.75, 5.0, -3.75, -5.0, 12.5, -12.5])
     indices = layer_index_from_z(z, n_layers=n_layers, extent=extent)
 
-    n_colors = len(_LAYER_COLORS)
+    n_colors = len(LAYER_COLORS)
     assert indices.dtype.kind == "i"
     assert np.all(indices >= 0)
     assert np.all(indices < n_colors)

@@ -16,6 +16,7 @@ import streamlit as st
 from superposed_folds import (
     ALL_PRESETS,
     END_MEMBERS,
+    N_LAYERS,
     OBLIQUE_ROTATION,
     PARALLEL_ROTATION,
     DrillCoreParameters,
@@ -272,7 +273,7 @@ def _interactive_panel() -> None:
             n_circ=_CORE_RESOLUTION,
         )
         Xc, Yc, Zc, layer_idx_c, Z0c = _cached_drill_core_data(
-            f1, f2, core, 5, 5.0, _VIZ_SOURCE_FINGERPRINT
+            f1, f2, core, N_LAYERS, 5.0, _VIZ_SOURCE_FINGERPRINT
         )
     else:
         core = None
@@ -348,7 +349,7 @@ def _interactive_panel() -> None:
             # [-extent/2 - spacing/2, extent/2 + spacing/2]. Outside this
             # band, the cylinder is sampling the model's periodic
             # continuation; fade it.
-            n_layers = 5
+            n_layers = N_LAYERS
             extent = 5.0
             spacing = extent / (n_layers - 1) if n_layers > 1 else extent
             half_band = extent / 2.0 + spacing / 2.0

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
+from .layers import N_LAYERS
 from .transforms import dipdir_dip_rake_to_rotation_angles, rotate_xyz
 
 
@@ -122,7 +123,7 @@ def apply_superposed_fold(
 
 
 def make_layer_stack(
-    n_layers: int = 5,
+    n_layers: int = N_LAYERS,
     extent: float = 5.0,
     n_grid: int = 64,
     z_span: float | None = None,

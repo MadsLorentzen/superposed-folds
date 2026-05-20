@@ -20,6 +20,7 @@ from .geometry import (
     initial_z_at,
     make_layer_stack,
 )
+from .layers import LAYER_COLORS, N_LAYERS, layer_index_from_z
 from .viz import (
     drill_core_map_overlay_traces,
     fig_2d_drill_core_unrolled,
@@ -27,7 +28,6 @@ from .viz import (
     fig_3d_drill_core_trace,
     fig_3d_stack,
     fig_stereonet,
-    layer_index_from_z,
 )
 
 __version__ = "0.1.0.dev0"
@@ -35,6 +35,8 @@ __version__ = "0.1.0.dev0"
 __all__ = [
     "ALL_PRESETS",
     "END_MEMBERS",
+    "LAYER_COLORS",
+    "N_LAYERS",
     "OBLIQUE_ROTATION",
     "PARALLEL_ROTATION",
     "DrillCoreParameters",

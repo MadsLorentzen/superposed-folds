@@ -23,7 +23,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from .geometry import FoldParameters, initial_z_at
-from .viz import layer_index_from_z
+from .layers import layer_index_from_z
 
 
 @dataclass(frozen=True)

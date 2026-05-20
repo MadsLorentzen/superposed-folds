@@ -16,11 +16,10 @@ from .geometry import (
     initial_z_at,
     make_layer_stack,
 )
+from .layers import LAYER_COLORS, N_LAYERS, layer_index_from_z
 
 if TYPE_CHECKING:
     from .cylinder import DrillCoreParameters
-
-_LAYER_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
 
 
 def _discrete_colorscale(colors: list[str]) -> list[list[float | str]]:
@@ -38,32 +37,11 @@ def _discrete_colorscale(colors: list[str]) -> list[list[float | str]]:
     return scale
 
 
-def layer_index_from_z(
-    z_array: NDArray[np.floating],
-    n_layers: int,
-    extent: float,
-) -> NDArray[np.integer]:
-    """Round per-point initial-z values to integer layer indices and wrap
-    them periodically into the available palette.
-
-    Bin centers are `np.linspace(-extent/2, extent/2, n_layers)`, matching
-    the horizon heights produced by `make_layer_stack` with default
-    `z_span = extent`. The result wraps modulo `len(_LAYER_COLORS)` so the
-    same five colors used in the 3D viewer cycle through the 2D map and
-    the unrolled drill-core strip.
-    """
-    z_levels = np.linspace(-extent / 2.0, extent / 2.0, n_layers)
-    layer_spacing = z_levels[1] - z_levels[0] if n_layers > 1 else 1.0
-    layer_index = np.round((z_array - z_levels[0]) / layer_spacing)
-    n_colors = len(_LAYER_COLORS)
-    return layer_index.astype(int) % n_colors
-
-
 def fig_3d_stack(
     f1: FoldParameters,
     f2: FoldParameters,
     *,
-    n_layers: int = 5,
+    n_layers: int = N_LAYERS,
     n_grid: int = 64,
     extent: float = 5.0,
 ) -> go.Figure:
@@ -72,7 +50,7 @@ def fig_3d_stack(
     z_arrays: list[NDArray[np.floating]] = []
     for (X0, Y0, Z0), color in zip(
         make_layer_stack(n_layers=n_layers, extent=extent, n_grid=n_grid),
-        _LAYER_COLORS,
+        LAYER_COLORS,
         strict=False,
     ):
         Xf, Yf, Zf = apply_superposed_fold(X0, Y0, Z0, f1, f2)
@@ -196,7 +174,7 @@ def fig_2d_interference(
     f1: FoldParameters,
     f2: FoldParameters,
     *,
-    n_layers: int = 5,
+    n_layers: int = N_LAYERS,
     n_grid: int = 200,
     extent: float = 5.0,
     z_section: float = 0.0,
@@ -213,14 +191,14 @@ def fig_2d_interference(
 
     Z0 = initial_z_at(X, Y, Z, f1, f2)
     layer_index_wrapped = layer_index_from_z(Z0, n_layers, extent)
-    n_colors = len(_LAYER_COLORS)
+    n_colors = len(LAYER_COLORS)
 
     fig = go.Figure(
         data=go.Heatmap(
             x=xs,
             y=ys,
             z=layer_index_wrapped,
-            colorscale=_discrete_colorscale(_LAYER_COLORS),
+            colorscale=_discrete_colorscale(LAYER_COLORS),
             zmin=-0.5,
             zmax=n_colors - 0.5,
             showscale=False,
@@ -328,9 +306,9 @@ def fig_3d_drill_core_trace(
     them onto the cached layer-stack figure with `add_trace` so changes
     to drill-core parameters do not invalidate the layer-surface cache.
     """
-    n_colors = len(_LAYER_COLORS)
+    n_colors = len(LAYER_COLORS)
     common = dict(
-        colorscale=_discrete_colorscale(_LAYER_COLORS),
+        colorscale=_discrete_colorscale(LAYER_COLORS),
         cmin=-0.5,
         cmax=n_colors - 0.5,
         showscale=False,
@@ -422,13 +400,13 @@ def fig_2d_drill_core_unrolled(
     n_axial, n_circ = layer_idx.shape
     theta_deg = np.linspace(0.0, 360.0, n_circ)
     depth = np.linspace(0.0, length, n_axial)
-    n_colors = len(_LAYER_COLORS)
+    n_colors = len(LAYER_COLORS)
     z_float = layer_idx.astype(float)
 
     common = dict(
         x=theta_deg,
         y=depth,
-        colorscale=_discrete_colorscale(_LAYER_COLORS),
+        colorscale=_discrete_colorscale(LAYER_COLORS),
         zmin=-0.5,
         zmax=n_colors - 0.5,
         showscale=False,
