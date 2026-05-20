@@ -141,12 +141,13 @@ def fig_3d_stack(
             zaxis=dict(
                 title="Z (km)", range=[-z_half, z_half], autorange=False
             ),
-            # Data aspect: the scene proportions follow the explicit
-            # axis ranges. With z half-width >= x/y half-width, the
-            # scene will appear taller than wide for high-amplitude
-            # folds, which is geologically faithful (no vertical
-            # exaggeration).
-            aspectmode="data",
+            # Cubic aspect so the scene proportions stay fixed across
+            # amplitude/wavelength changes and across toggling to the
+            # block-diagram cube view. High-amplitude folds are
+            # visually compressed inside the cubic box rather than
+            # stretching the scene vertically; this matches the
+            # paper-model block-diagram convention.
+            aspectmode="cube",
             # Explicit scene.uirevision (in addition to the layout-level
             # one below) so 3D camera/pan/zoom state survives toggling
             # the drill-core enable and layer-surfaces visibility
@@ -621,7 +622,9 @@ def fig_3d_block_diagram(
             zaxis=dict(
                 title="Z (km)", range=[-scene_z_half, scene_z_half], autorange=False
             ),
-            aspectmode="data",
+            # Cubic aspect — matches fig_3d_stack so the scene shape
+            # stays constant when toggling between the two views.
+            aspectmode="cube",
             uirevision="3d-scene-locked",
             camera=dict(eye=dict(x=1.4, y=1.4, z=1.0)),
             annotations=[
