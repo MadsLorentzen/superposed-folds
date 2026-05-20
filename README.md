@@ -10,19 +10,23 @@ implementing the plane-strain superposed-folding equations from Ramsay & Lisle
 
 ![demo](assets/demo.gif)
 
-Pick a Grasemann (2004) preset on the left or move the sliders. The 3D fold
-stack, the 2D interference map at z = 0, the stereonet, and the classification
-readout all update together. Optionally enable a cylindrical drill core to see
-the same interference pattern intersecting a borehole at any collar position,
-azimuth, and plunge, rendered both embedded in the 3D layer stack and unrolled
-flat as a depth-vs-circumference strip.
+Pick a Grasemann (2004) preset on the left or move the sliders to explore
+custom amplitudes, stretches, wavelengths, and F2 orientations. The 3D
+fold stack, the 2D interference map at z = 0, the stereonet, and the
+classification readout all update together. Toggle the block-diagram cube
+view to render the model as a painted ±5 km box (Schöpfer papermodel style)
+instead of separate layer horizons. Optionally enable a cylindrical drill
+core to see the same interference pattern intersecting a borehole at any
+collar position, azimuth, and plunge, rendered both embedded in the 3D
+view and unrolled flat as a depth-vs-circumference strip.
 
 ![drill-core demo](assets/streamlit-demo.gif)
 
 ## What's inside
 
 - A small Python library (`superposed_folds`) implementing:
-  - `FoldParameters` and the Ramsay & Lisle plane-strain equations
+  - `FoldParameters` (amplitude, stretch, orientation, wavelength) and
+    the Ramsay & Lisle plane-strain equations
   - Forward (`apply_superposed_fold`) and inverse (`initial_z_at`) maps
   - All 21 canonical Grasemann (2004) preset configurations
   - `DrillCoreParameters` and `sample_layers_on_cylinder` for sampling the
